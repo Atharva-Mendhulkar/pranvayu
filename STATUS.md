@@ -63,12 +63,18 @@ Phase: PranVayu Geospatial Air Intelligence Platform v2 Overhaul
   - **Explicit Validity Mask & Three Distinct States**:
     1. *Valid Low Pollution*: Clean air ($\le 30\,\mu\text{g/m}^3$ and $30-60\,\mu\text{g/m}^3$) rendered in visible Deep Forest Emerald (`#18382E`) and Muted Green (`#2F7656`) with alpha boosted to $0.44 - 0.54$, providing clear contrast against the dark basemap.
     2. *Valid Elevated Pollution*: Graded through olive, amber, rust, and crimson cores ($60 - 320+\,\mu\text{g/m}^3$).
-    3. *Missing / Insufficient Model Coverage*: Out-of-domain regions ($lat < 28.25$ or $> 28.95$, $lon < 76.75$ or $> 77.60$) rendered in subtle neutral charcoal with fine diagonal 45° hatching pattern (`gl_FragColor = vec4(finalNoDataColor, 0.52)`), never painted green and never left as ambiguous black voids.
+    3. *Out-of-Domain Boundaries*: Smooth feathering to zero opacity at the NCR basin borders via `smoothstep`, leaving the dark basemap clean and unencumbered without dark screen covers. Clicking outside the domain displays honest `-- µg/m³ PM2.5`, `badge-missing`, and explicit explanation without fabricating values.
   - **No Fabricated Concentration Values**:
     - Clicking an out-of-domain cell displays `-- µg/m³ PM2.5`, `badge-missing`, and explicit message: *"An estimate is unavailable at this location for the selected horizon."*
     - Unmonitored coordinates within domain display `Physics-Informed Spatial Estimate` with $\pm \sigma$ spatial uncertainty ($\sigma(d) = 12.0 + 1.8 \min(d, 25)$).
-  - **Air Intelligence Key Update**: Added diagonal hatched swatch entry: *"Insufficient model coverage"*.
   - **Offline Unit Tests**: 23/23 pytest tests passing offline (`backend/tests/test_continuous_field.py`).
+
+- **Atmospheric Pollution Cloud Restoration & Multi-Layer Orthogonality (`web/src/components/DelhiFluidMap.tsx`)**:
+  - **Organic FBM Atmospheric Turbulence**: Added lightweight 2D noise and 3-octave Fractal Brownian Motion (FBM) in the WebGL fragment shader, imparting drifting eddies, realistic smoke filamentation along the NW-to-SE transport corridor, and soft plume edge billowing.
+  - **Soft Domain Boundary Attenuation (`domainFactor`)**: Replaced the harsh screen-covering hatch with continuous boundary feathering (`domainFactor = smoothstep(-0.015, 0.035, edgeDist)`). Clouds fade smoothly across ~4 km into the basemap.
+  - **Hotspot Core & Plume Uniform Separation (`u_hotspots_visible`)**: Added `u_hotspots_visible` uniform to the Three.js shader, linked to `layers.hotspots`. Hotspot cores can be toggled without disturbing the continuous regional background field.
+  - **Calibrated Translucent Opacity Curve**: Clean air ($\le 30\,\mu\text{g/m}^3$) is rendered in translucent emerald (alpha $0.18 - 0.26$) so roads and basemap geometry remain crisp; ramping up smoothly to $0.74 - 0.88$ for severe crimson cores.
+  - **6 Independent Layer Toggles**: Standardized layer controls: (1) `Concentration clouds`, (2) `Hotspot cores`, (3) `Particles`, (4) `Wind vectors`, (5) `Monitoring stations`, (6) `Schools`.
 
 - **Full Verification & Quality Assurance**:
   - Pure obsidian/charcoal cartography with zero brown/orange mud.

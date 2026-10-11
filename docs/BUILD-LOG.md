@@ -191,5 +191,33 @@
   - Production build verified: `make lint` clean (ruff 0 warnings, tsc 0 errors, CSS bundle 28.73 kB / 9.38 kB gzipped, well within 30 kB budget).
   - High-resolution headless Chrome screenshot captured and inspected, confirming continuous emerald green field across outer sectors, distinct warm hotspot cores, and crisp road legibility.
 
-
-
+### 2026-10-11 22:30 IST — Atmospheric Pollution Cloud Restoration & Multi-Layer Orthogonality
+- **Diagnosed Vanished Pollution Clouds**:
+  - Found that the previous out-of-domain handler rendered an opaque charcoal diagonal hatch `vec4(finalNoDataColor, 0.52)` across 60.9% of the viewport outside the model bounding box, darkening the screen.
+  - Concurrently, inside the domain, setting high base alpha (0.44–0.48) on a flat background concentration flattened dynamic range, obscuring the soft Gaussian dispersion shapes and turbulent eddies.
+- **Organic FBM Atmospheric Turbulence**:
+  - Re-introduced lightweight 2D noise and 3-octave Fractal Brownian Motion (FBM) in the WebGL fragment shader:
+    - Regional background ventilation modulated with large-scale drifting eddies: `bgTurb = fbm(vec2(lon * 14.0, lat * 14.0) - wDir * (u_time * 0.015))`.
+    - Upstream NW biomass advection plume textured with drifting filaments along the transport corridor: `smokeTurb = fbm(smokeCoord * 2.5)`.
+    - Urban plume cores modulated with gentle edge billowing: `plumeTurb = fbm(plumeCoord)`.
+  - Gives the concentration field organic wisps and authentic billowing atmospheric texture drifting in real time with the wind, rather than static flat discs.
+- **Soft Domain Boundary Attenuation (`domainFactor`)**:
+  - Replaced the harsh screen-covering hatch with continuous boundary feathering: `domainFactor = smoothstep(-0.015, 0.035, edgeDist)`.
+  - Clouds smoothly fade to transparent across a ~4 km buffer at the domain edge, letting the dark obsidian basemap show through cleanly without harsh clipping or dark sheets.
+  - Out-of-domain coordinates display honest `-- µg/m³ PM2.5` and unavailable status when clicked without fabricating numbers.
+- **Hotspot Core & Plume Uniform Separation (`u_hotspots_visible`)**:
+  - Added `u_hotspots_visible` uniform to the Three.js shader, linked dynamically to `layers.hotspots`.
+  - Toggling `Hotspot cores` now independently activates/deactivates the high-intensity Gaussian cores and HTML pin markers while leaving the continuous regional background field fully visible.
+- **Calibrated Translucent Opacity Curve**:
+  - Re-calibrated alpha ramp across the 7-tier scientific dark-map palette:
+    - Clean air ($\le 30\,\mu\text{g/m}^3$): emerald tint with alpha $0.18 - 0.26$, revealing roads and city structure beneath while establishing verified clean air.
+    - Low ($30-60\,\mu\text{g/m}^3$): muted green cloud with alpha $0.26 - 0.38$.
+    - Moderate ($60-100\,\mu\text{g/m}^3$): olive haze with alpha $0.38 - 0.50$.
+    - Elevated ($100-160\,\mu\text{g/m}^3$): amber cloud with alpha $0.50 - 0.62$.
+    - High & Extreme ($160-320+\,\mu\text{g/m}^3$): dense rust, crimson, and burgundy cores with alpha $0.62 - 0.88$.
+- **6 Independent Layer Toggles**:
+  - Standardized toggle controls in `DelhiFluidMap.tsx`: (1) `Concentration clouds`, (2) `Hotspot cores`, (3) `Particles`, (4) `Wind vectors`, (5) `Monitoring stations`, (6) `Schools`.
+- **Quality Gates & Visual Verification**:
+  - `make test`: 23/23 pytest tests passing offline.
+  - `make lint`: clean (ruff 0 warnings, tsc 0 errors, CSS bundle 28.91 kB / 9.44 kB gzipped).
+  - Headless Chrome rendering verified: continuous emerald field blankets ventilated areas, warm amber/coral plumes mark transport corridors, high-intensity cores highlight Anand Vihar, Wazirpur, and Bawana, and moving particles flow coherently along wind streamlines.

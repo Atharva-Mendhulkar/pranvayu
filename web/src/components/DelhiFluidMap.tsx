@@ -526,6 +526,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       u_meters_per_pixel: { value: initialMpp },
       u_hour_offset: { value: hourOffset },
       u_layer_visible: { value: layers.pollution ? 1.0 : 0.0 },
+      u_hotspots_visible: { value: layers.hotspots ? 1.0 : 0.0 },
       u_vis_mode: { value: visMode === 'hotspots' ? 0.0 : 1.0 },
       u_map_bounds: {
         value: new THREE.Vector4(
@@ -557,15 +558,46 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       uniform float u_meters_per_pixel;
       uniform float u_hour_offset;
       uniform float u_layer_visible;
+      uniform float u_hotspots_visible;
       uniform float u_vis_mode;
       uniform vec4 u_map_bounds;
 
       varying vec2 vUv;
 
-      // 7-Tier Scientific Dark-Map Palette
+      // Lightweight 2D Noise & FBM for Organic Atmospheric Turbulence
+      float hash21(vec2 p) {
+        p = fract(p * vec2(234.34, 435.345));
+        p += dot(p, p + 34.23);
+        return fract(p.x * p.y);
+      }
+
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        float a = hash21(i);
+        float b = hash21(i + vec2(1.0, 0.0));
+        float c = hash21(i + vec2(0.0, 1.0));
+        float d = hash21(i + vec2(1.0, 1.0));
+        return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+      }
+
+      float fbm(vec2 p) {
+        float v = 0.0;
+        float a = 0.5;
+        mat2 rot = mat2(0.8, -0.6, 0.6, 0.8);
+        for (int i = 0; i < 3; i++) {
+          v += a * noise(p);
+          p = rot * p * 2.02;
+          a *= 0.5;
+        }
+        return v;
+      }
+
+      // 7-Tier Scientific Dark-Map Palette with Calibrated Translucent Opacity Curve
       vec4 evaluateContinuousPollutionColor(float pmVal) {
-        vec3 cVLow  = vec3(0.098, 0.280, 0.210); // #18382E Deep Forest Emerald (enhanced visibility)
-        vec3 cLow   = vec3(0.184, 0.495, 0.350); // #2F7656 Muted Green (enhanced visibility)
+        vec3 cVLow  = vec3(0.098, 0.280, 0.210); // #18382E Deep Forest Emerald
+        vec3 cLow   = vec3(0.184, 0.495, 0.350); // #2F7656 Muted Green
         vec3 cMod   = vec3(0.604, 0.671, 0.333); // #9AAB55 Muted Olive / Sage
         vec3 cElev  = vec3(0.824, 0.639, 0.302); // #D2A34D Muted Amber
         vec3 cHigh  = vec3(0.906, 0.478, 0.263); // #E77A43 Rust Orange
@@ -577,32 +609,32 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
 
         if (pmVal <= 30.0) {
           float t = clamp(pmVal / 30.0, 0.0, 1.0);
-          rgb = mix(cVLow * 0.95, cVLow, t);
-          alpha = mix(0.44, 0.48, t);
+          rgb = mix(cVLow * 0.90, cVLow, t);
+          alpha = mix(0.18, 0.26, t);
         } else if (pmVal <= 60.0) {
           float t = (pmVal - 30.0) / 30.0;
           rgb = mix(cVLow, cLow, t);
-          alpha = mix(0.48, 0.54, t);
+          alpha = mix(0.26, 0.38, t);
         } else if (pmVal <= 100.0) {
           float t = (pmVal - 60.0) / 40.0;
           rgb = mix(cLow, cMod, t);
-          alpha = mix(0.54, 0.60, t);
+          alpha = mix(0.38, 0.50, t);
         } else if (pmVal <= 160.0) {
           float t = (pmVal - 100.0) / 60.0;
           rgb = mix(cMod, cElev, t);
-          alpha = mix(0.60, 0.66, t);
+          alpha = mix(0.50, 0.62, t);
         } else if (pmVal <= 240.0) {
           float t = (pmVal - 160.0) / 80.0;
           rgb = mix(cElev, cHigh, t);
-          alpha = mix(0.66, 0.72, t);
+          alpha = mix(0.62, 0.74, t);
         } else if (pmVal <= 320.0) {
           float t = (pmVal - 240.0) / 80.0;
           rgb = mix(cHigh, cVHigh, t);
-          alpha = mix(0.72, 0.78, t);
+          alpha = mix(0.74, 0.82, t);
         } else {
           float t = clamp((pmVal - 320.0) / 100.0, 0.0, 1.0);
           rgb = mix(cVHigh, cExt, t);
-          alpha = mix(0.78, 0.84, t);
+          alpha = mix(0.82, 0.88, t);
         }
 
         return vec4(rgb, alpha);
@@ -619,30 +651,34 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         float fragLon = mix(u_map_bounds.y, u_map_bounds.w, vUv.x);
         vec2 fragPix = vec2(vUv.x * u_resolution.x, (1.0 - vUv.y) * u_resolution.y);
 
-        // 2. Delhi NCR Domain Bounds [28.25 - 28.95] x [76.75 - 77.60]
-        bool isInsideDomain = (fragLat >= 28.25 && fragLat <= 28.95 && fragLon >= 76.75 && fragLon <= 77.60);
+        // 2. Delhi NCR Domain Soft Boundary Attenuation
+        // Domain: [28.25 - 28.95] x [76.75 - 77.60]
+        float dLatMin = fragLat - 28.25;
+        float dLatMax = 28.95 - fragLat;
+        float dLonMin = fragLon - 76.75;
+        float dLonMax = 77.60 - fragLon;
+        float edgeDist = min(min(dLatMin, dLatMax), min(dLonMin, dLonMax));
 
-        if (!isInsideDomain) {
-          // MISSING / INSUFFICIENT MODEL COVERAGE:
-          // Subtle neutral charcoal with fine diagonal hatching pattern
-          float hatchCoord = (fragPix.x + fragPix.y) * 0.16;
-          float hatchPattern = step(0.70, fract(hatchCoord));
-          vec3 bgNoData = vec3(0.045, 0.055, 0.070);     // Neutral charcoal background
-          vec3 hatchColor = vec3(0.095, 0.115, 0.145);   // Subtle lighter charcoal diagonal hatch
-          vec3 finalNoDataColor = mix(bgNoData, hatchColor, hatchPattern);
-          gl_FragColor = vec4(finalNoDataColor, 0.52);
+        // Softly attenuate to transparent outside supported NCR modeling basin
+        float domainFactor = smoothstep(-0.015, 0.035, edgeDist);
+        if (domainFactor <= 0.001) {
+          gl_FragColor = vec4(0.0);
           return;
         }
 
-        vec2 fragPix = vec2(vUv.x * u_resolution.x, (1.0 - vUv.y) * u_resolution.y);
         vec2 wDir = normalize(u_wind);
         vec2 wPerp = vec2(-wDir.y, wDir.x);
 
         float diurnalMod = 0.92 + 0.22 * sin((u_hour_offset - 8.0) * 0.26);
 
-        // 3. Regional Background Ventilation (cleaner in SW, hazier in North)
+        // 3. Regional Background Ventilation with Organic Cloud Haze Texture
         float etaLat = clamp((fragLat - 28.25) / 0.70, 0.0, 1.0);
         float bgConcentration = (26.0 + 14.0 * etaLat) * diurnalMod;
+
+        // Large-scale atmospheric background cloud eddies
+        vec2 bgCoord = vec2(fragLon * 14.0, fragLat * 14.0) - wDir * (u_time * 0.015);
+        float bgTurb = fbm(bgCoord);
+        bgConcentration *= (0.90 + 0.20 * bgTurb);
 
         // 4. Upstream NW Biomass Advection Tongue (entry: 28.85°N, 77.02°E)
         float nwLat = 28.85;
@@ -663,64 +699,76 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           longDecay = 1.0 / (1.0 + dDownSmoke / 45000.0);
         }
 
+        // Atmospheric smoke filament texture moving with wind
+        vec2 smokeCoord = vec2(dDownSmoke * 0.000035 - u_time * 0.03, dCrossSmoke * 0.000075);
+        float smokeTurb = fbm(smokeCoord * 2.5);
         float smokeAmplitude = 65.0 * diurnalMod * max(u_wind_speed, 0.5);
-        float smokeConcentration = smokeAmplitude * crossDecay * longDecay;
+        float smokeConcentration = smokeAmplitude * crossDecay * longDecay * (0.85 + 0.30 * smokeTurb);
 
-        // 5. Urban Hotspot Plumes
+        // 5. Urban Hotspot Plumes (Layer 3)
         float maxUrban = 0.0;
         float sumUrban = 0.0;
 
-        for (int i = 0; i < 16; i++) {
-          if (i >= u_num_hotspots) break;
+        if (u_hotspots_visible > 0.5) {
+          for (int i = 0; i < 16; i++) {
+            if (i >= u_num_hotspots) break;
 
-          vec2 hScreen = vec2(
-            u_hotspot_screen_positions[i].x * u_resolution.x,
-            (1.0 - u_hotspot_screen_positions[i].y) * u_resolution.y
-          );
+            vec2 hScreen = vec2(
+              u_hotspot_screen_positions[i].x * u_resolution.x,
+              (1.0 - u_hotspot_screen_positions[i].y) * u_resolution.y
+            );
 
-          vec2 dPix = fragPix - hScreen;
-          vec2 dMeters = dPix * u_meters_per_pixel;
+            vec2 dPix = fragPix - hScreen;
+            vec2 dMeters = dPix * u_meters_per_pixel;
 
-          float dDownwind = dot(dMeters, wDir);
-          float dCrosswind = dot(dMeters, wPerp);
+            float dDownwind = dot(dMeters, wDir);
+            float dCrosswind = dot(dMeters, wPerp);
 
-          // Core (1350m)
-          float sigmaCoreDown = 1350.0;
-          float sigmaCoreCross = 900.0;
-          if (dDownwind > 0.0) {
-            sigmaCoreDown += u_wind_speed * 1200.0 * 0.30;
-          } else {
-            sigmaCoreDown *= 0.65;
+            // Core (1350m)
+            float sigmaCoreDown = 1350.0;
+            float sigmaCoreCross = 900.0;
+            if (dDownwind > 0.0) {
+              sigmaCoreDown += u_wind_speed * 1200.0 * 0.30;
+            } else {
+              sigmaCoreDown *= 0.65;
+            }
+            float rCoreDown = dDownwind / max(sigmaCoreDown, 80.0);
+            float rCoreCross = dCrosswind / max(sigmaCoreCross, 80.0);
+            float distSqCore = rCoreDown * rCoreDown + rCoreCross * rCoreCross;
+
+            // Halo (3200m)
+            float sigmaHaloDown = 3200.0;
+            float sigmaHaloCross = 2200.0;
+            if (dDownwind > 0.0) {
+              sigmaHaloDown += u_wind_speed * 1800.0 * 0.55;
+              sigmaHaloCross += dDownwind * 0.14;
+            } else {
+              sigmaHaloDown *= 0.60;
+            }
+            float rHaloDown = dDownwind / max(sigmaHaloDown, 120.0);
+            float rHaloCross = dCrosswind / max(sigmaHaloCross, 120.0);
+            float distSqHalo = rHaloDown * rHaloDown + rHaloCross * rHaloCross;
+
+            if (distSqCore > 9.0 && distSqHalo > 9.0) continue;
+
+            float basePm = u_hotspot_intensities[i] * diurnalMod;
+            float cCore = basePm * 0.75 * exp(-0.5 * distSqCore);
+            float cHalo = basePm * 0.25 * exp(-0.5 * distSqHalo);
+            float cPoint = cCore + cHalo;
+
+            maxUrban = max(maxUrban, cPoint);
+            sumUrban += cPoint;
           }
-          float rCoreDown = dDownwind / max(sigmaCoreDown, 80.0);
-          float rCoreCross = dCrosswind / max(sigmaCoreCross, 80.0);
-          float distSqCore = rCoreDown * rCoreDown + rCoreCross * rCoreCross;
-
-          // Halo (3200m)
-          float sigmaHaloDown = 3200.0;
-          float sigmaHaloCross = 2200.0;
-          if (dDownwind > 0.0) {
-            sigmaHaloDown += u_wind_speed * 1800.0 * 0.55;
-            sigmaHaloCross += dDownwind * 0.14;
-          } else {
-            sigmaHaloDown *= 0.60;
-          }
-          float rHaloDown = dDownwind / max(sigmaHaloDown, 120.0);
-          float rHaloCross = dCrosswind / max(sigmaHaloCross, 120.0);
-          float distSqHalo = rHaloDown * rHaloDown + rHaloCross * rHaloCross;
-
-          if (distSqCore > 9.0 && distSqHalo > 9.0) continue;
-
-          float basePm = u_hotspot_intensities[i] * diurnalMod;
-          float cCore = basePm * 0.75 * exp(-0.5 * distSqCore);
-          float cHalo = basePm * 0.25 * exp(-0.5 * distSqHalo);
-          float cPoint = cCore + cHalo;
-
-          maxUrban = max(maxUrban, cPoint);
-          sumUrban += cPoint;
         }
 
-        float urbanConcentration = maxUrban + 0.22 * (sumUrban - maxUrban);
+        float urbanConcentration = 0.0;
+        if (u_hotspots_visible > 0.5) {
+          urbanConcentration = maxUrban + 0.22 * (sumUrban - maxUrban);
+          // Subtle plume edge billowing
+          vec2 plumeTurbCoord = fragPix * 0.0035 - wDir * (u_time * 0.04);
+          float plumeTurb = fbm(plumeTurbCoord);
+          urbanConcentration *= (0.90 + 0.20 * plumeTurb);
+        }
 
         float finalConcentration = 0.0;
         if (u_vis_mode > 0.5) {
@@ -729,7 +777,9 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           finalConcentration = urbanConcentration + 0.35 * (bgConcentration + smokeConcentration);
         }
 
-        gl_FragColor = evaluateContinuousPollutionColor(finalConcentration);
+        vec4 col = evaluateContinuousPollutionColor(finalConcentration);
+        col.a *= domainFactor;
+        gl_FragColor = col;
       }
     `;
 
@@ -784,6 +834,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       threeRef.current.material.uniforms.u_wind_speed.value = windSpeedKmh / 20.0;
       threeRef.current.material.uniforms.u_hour_offset.value = hourOffset;
       threeRef.current.material.uniforms.u_layer_visible.value = layers.pollution ? 1.0 : 0.0;
+      threeRef.current.material.uniforms.u_hotspots_visible.value = layers.hotspots ? 1.0 : 0.0;
       threeRef.current.material.uniforms.u_vis_mode.value = visMode === 'hotspots' ? 0.0 : 1.0;
       if (mapInstanceRef.current) {
         const bounds = mapInstanceRef.current.getBounds();
@@ -795,7 +846,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         );
       }
     }
-  }, [windDirectionDeg, windSpeedKmh, hourOffset, layers.pollution, visMode]);
+  }, [windDirectionDeg, windSpeedKmh, hourOffset, layers.pollution, layers.hotspots, visMode]);
 
   // =========================================================================
   // LAYER 5: GEOGRAPHIC ATMOSPHERIC PARTICLE ADVECTION ENGINE
@@ -1692,7 +1743,17 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
                   onChange={(e) => setLayers({ ...layers, pollution: e.target.checked })}
                   style={{ accentColor: 'var(--accent-cyan)' }}
                 />
-                Concentration Field (Heatmap)
+                Concentration clouds
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                <input
+                  type="checkbox"
+                  checked={layers.hotspots}
+                  onChange={(e) => setLayers({ ...layers, hotspots: e.target.checked })}
+                  style={{ accentColor: 'var(--accent-cyan)' }}
+                />
+                Hotspot cores
               </label>
 
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', color: 'var(--text-secondary)' }}>
@@ -1702,7 +1763,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
                   onChange={(e) => setLayers({ ...layers, particles: e.target.checked })}
                   style={{ accentColor: 'var(--accent-cyan)' }}
                 />
-                Particle Transport (Advection)
+                Particles
               </label>
 
               {layers.particles && (
@@ -1733,17 +1794,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
                   onChange={(e) => setLayers({ ...layers, wind: e.target.checked })}
                   style={{ accentColor: 'var(--accent-cyan)' }}
                 />
-                Wind Vectors & Transport Arrows
-              </label>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                <input
-                  type="checkbox"
-                  checked={layers.hotspots}
-                  onChange={(e) => setLayers({ ...layers, hotspots: e.target.checked })}
-                  style={{ accentColor: 'var(--accent-cyan)' }}
-                />
-                Inferred Hotspot Cores
+                Wind vectors
               </label>
 
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', color: 'var(--text-secondary)' }}>
@@ -1753,7 +1804,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
                   onChange={(e) => setLayers({ ...layers, stations: e.target.checked })}
                   style={{ accentColor: 'var(--accent-cyan)' }}
                 />
-                CPCB / DPCC Stations
+                Monitoring stations
               </label>
 
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', color: 'var(--text-secondary)' }}>
@@ -1763,7 +1814,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
                   onChange={(e) => setLayers({ ...layers, schools: e.target.checked })}
                   style={{ accentColor: 'var(--accent-cyan)' }}
                 />
-                Delhi Schools & Academies
+                Schools
               </label>
             </div>
           )}
