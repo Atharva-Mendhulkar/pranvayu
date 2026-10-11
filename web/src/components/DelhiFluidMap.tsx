@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Language } from '../lib/i18n';
-import { WindIcon, CompassIcon, LayersIcon, PlayIcon, PauseIcon, RefreshIcon, InfoIcon } from './Icons';
+import { WindIcon, LayersIcon, PlayIcon, PauseIcon, RefreshIcon } from './Icons';
 
 export interface HotspotData {
   id: string;
@@ -66,14 +66,19 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const windCanvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Visualization mode: Mode A: 'hotspots' (default) vs Mode B: 'continuous'
+  const [visMode, setVisMode] = useState<'hotspots' | 'continuous'>('hotspots');
+
   // Layer visibility state
   const [layers, setLayers] = useState({
     pollution: true,
     wind: true,
-    stations: true,
     hotspots: true,
   });
   const [showLayerMenu, setShowLayerMenu] = useState(false);
+
+  // Current zoom level for zoom-dependent detail
+  const [currentZoom, setCurrentZoom] = useState<number>(11);
 
   // Active selected pin on map
   const [activePin, setActivePin] = useState<HotspotData | null>(null);
@@ -82,12 +87,28 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
   // Three.js instances ref
   const threeRef = useRef<{
     scene: THREE.Scene;
-    camera: THREE.PerspectiveCamera;
+    camera: THREE.OrthographicCamera;
     renderer: THREE.WebGLRenderer;
     material: THREE.ShaderMaterial;
     clock: THREE.Clock;
     reqId: number;
   } | null>(null);
+
+  // Helper: Diurnal curve forecast modulation
+  const getHotspotForecastVal = useCallback((basePm: number, offset: number) => {
+    const diurnalMod = 0.92 + 0.22 * Math.sin((offset - 8.0) * 0.26);
+    return Math.round(basePm * diurnalMod);
+  }, []);
+
+  // Helper: Scientific palette category & color
+  const getCategoryForPm = useCallback((pm: number) => {
+    if (pm <= 30) return { label: 'Good', color: '#E7C86F', badge: 'badge-low' };
+    if (pm <= 60) return { label: 'Satisfactory', color: '#E9A45C', badge: 'badge-moderate' };
+    if (pm <= 90) return { label: 'Moderate', color: '#E9A45C', badge: 'badge-moderate' };
+    if (pm <= 120) return { label: 'Poor', color: '#E87849', badge: 'badge-poor' };
+    if (pm <= 250) return { label: 'Very Poor', color: '#E9564E', badge: 'badge-very-poor' };
+    return { label: 'Severe', color: '#A83B45', badge: 'badge-severe' };
+  }, []);
 
   // Synchronize Leaflet map coordinates with Three.js shader and station pins
   const syncMapCoordinates = useCallback(() => {
@@ -97,6 +118,9 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     const w = containerRef.current.clientWidth;
     const h = containerRef.current.clientHeight;
     if (w <= 0 || h <= 0) return;
+
+    const zoom = map.getZoom();
+    setCurrentZoom(zoom);
 
     const screenPositions = new Float32Array(16 * 2);
     const coords = hotspots.slice(0, 16).map((item, i) => {
@@ -113,7 +137,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
 
     if (threeRef.current) {
       threeRef.current.material.uniforms.u_hotspot_screen_positions.value = screenPositions;
-      threeRef.current.material.uniforms.u_map_zoom.value = map.getZoom();
+      threeRef.current.material.uniforms.u_map_zoom.value = zoom;
       threeRef.current.material.uniforms.u_resolution.value.set(w, h);
     }
 
@@ -153,7 +177,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         [28.9216, 77.5195],
       ]);
 
-      // OpenStreetMap tile layer
+      // OpenStreetMap tile layer (dark cartographic filter applied via CSS)
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -190,11 +214,9 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     const height = containerRef.current.clientHeight;
 
     const scene = new THREE.Scene();
-    scene.background = null;
 
-    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
-    camera.position.set(0, 7.8, 0.001);
-    camera.lookAt(new THREE.Vector3(0, 0, 0));
+    // Screen-space 2D orthographic camera for sub-pixel precision
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
     const renderer = new THREE.WebGLRenderer({
       canvas: canvasRef.current,
@@ -212,7 +234,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     });
 
     // Transport vector from meteorological wind angle
-    const transportRad = ((windDirectionDeg + 180) % 360 * Math.PI) / 180;
+    const transportRad = (((windDirectionDeg + 180) % 360) * Math.PI) / 180;
     const windVec = new THREE.Vector2(Math.sin(transportRad), -Math.cos(transportRad));
 
     const uniforms = {
@@ -227,13 +249,14 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       u_map_zoom: { value: 11.0 },
       u_hour_offset: { value: hourOffset },
       u_layer_visible: { value: layers.pollution ? 1.0 : 0.0 },
+      u_vis_mode: { value: visMode === 'hotspots' ? 0.0 : 1.0 },
     };
 
     const vertexShader = `
       varying vec2 vUv;
       void main() {
         vUv = uv;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        gl_Position = vec4(position.xy, 0.0, 1.0);
       }
     `;
 
@@ -248,49 +271,27 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       uniform float u_map_zoom;
       uniform float u_hour_offset;
       uniform float u_layer_visible;
+      uniform float u_vis_mode;
 
-      // Pseudo-random hash
-      float hash(vec2 p) {
-        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
-      }
+      varying vec2 vUv;
 
-      // 2D Value noise
-      float noise(vec2 p) {
-        vec2 i = floor(p);
-        vec2 f = fract(p);
-        vec2 u = f * f * (3.0 - 2.0 * f);
-        return mix(mix(hash(i + vec2(0.0,0.0)), hash(i + vec2(1.0,0.0)), u.x),
-                   mix(hash(i + vec2(0.0,1.0)), hash(i + vec2(1.0,1.0)), u.x), u.y);
-      }
+      // Scientific PM2.5 Color Scale:
+      // LOW (#E7C86F) -> MODERATE (#E9A45C) -> HIGH (#E87849) -> VERY HIGH (#E9564E) -> EXTREME (#A83B45)
+      vec3 getScientificPollutionColor(float normVal) {
+        vec3 cLow = vec3(0.906, 0.784, 0.435);      // #E7C86F (0-60 µg/m³)
+        vec3 cMod = vec3(0.914, 0.643, 0.361);      // #E9A45C (60-120 µg/m³)
+        vec3 cHigh = vec3(0.910, 0.471, 0.286);     // #E87849 (120-180 µg/m³)
+        vec3 cVHigh = vec3(0.914, 0.337, 0.306);    // #E9564E (180-250 µg/m³)
+        vec3 cExt = vec3(0.659, 0.231, 0.271);      // #A83B45 (250+ µg/m³)
 
-      // Fractional Brownian Motion
-      float fbm(vec2 p) {
-        float val = 0.0;
-        float amp = 0.5;
-        for (int i = 0; i < 4; i++) {
-          val += amp * noise(p);
-          p *= 2.15;
-          amp *= 0.48;
-        }
-        return val;
-      }
-
-      // Scientific PM2.5 Color Scale: #F2CF76 -> #F4A65A -> #F17A46 -> #EF554D -> #A83B45
-      vec3 getScientificPollutionColor(float pmNorm) {
-        vec3 c0 = vec3(0.949, 0.812, 0.463); // #F2CF76 (Low)
-        vec3 c1 = vec3(0.957, 0.651, 0.353); // #F4A65A (Moderate)
-        vec3 c2 = vec3(0.945, 0.478, 0.275); // #F17A46 (Poor)
-        vec3 c3 = vec3(0.937, 0.333, 0.302); // #EF554D (Very Poor)
-        vec3 c4 = vec3(0.659, 0.231, 0.271); // #A83B45 (Severe)
-
-        if (pmNorm <= 0.25) {
-          return mix(c0, c1, pmNorm / 0.25);
-        } else if (pmNorm <= 0.50) {
-          return mix(c1, c2, (pmNorm - 0.25) / 0.25);
-        } else if (pmNorm <= 0.75) {
-          return mix(c2, c3, (pmNorm - 0.50) / 0.25);
+        if (normVal <= 0.25) {
+          return mix(cLow, cMod, normVal / 0.25);
+        } else if (normVal <= 0.50) {
+          return mix(cMod, cHigh, (normVal - 0.25) / 0.25);
+        } else if (normVal <= 0.75) {
+          return mix(cHigh, cVHigh, (normVal - 0.50) / 0.25);
         } else {
-          return mix(c3, c4, clamp((pmNorm - 0.75) / 0.25, 0.0, 1.0));
+          return mix(cVHigh, cExt, clamp((normVal - 0.75) / 0.25, 0.0, 1.0));
         }
       }
 
@@ -300,79 +301,134 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           return;
         }
 
-        vec2 fragUV = gl_FragCoord.xy / u_resolution.xy;
+        vec2 fragUV = vUv;
         float aspect = u_resolution.x / u_resolution.y;
 
         vec2 windDir = normalize(u_wind);
         vec2 windPerp = vec2(-windDir.y, windDir.x);
 
-        float zoomScale = pow(2.0, clamp(u_map_zoom - 11.0, -1.5, 3.5));
+        // Geographic zoom scale: maintains constant ground footprint in kilometers
+        float geoScale = pow(2.0, clamp(u_map_zoom - 11.0, -2.5, 4.0));
 
-        // 1. Multi-source Gaussian plume atmospheric dispersion
-        float totalPlume = 0.0;
-        float weightedPM = 0.0;
-        float totalWeight = 0.0;
+        // Diurnal forecast curve modulation
+        float diurnalMod = 0.92 + 0.22 * sin((u_hour_offset - 8.0) * 0.26);
 
-        // Forecast modulation curve
-        float diurnalMod = 0.9 + 0.25 * sin((u_hour_offset - 8.0) * 0.26);
+        if (u_vis_mode < 0.5) {
+          // =========================================================================
+          // MODE A: INDIVIDUAL HOTSPOTS (DEFAULT)
+          // Localized Gaussian kernels with distinct cores and transparent space between
+          // =========================================================================
 
-        for (int i = 0; i < 16; i++) {
-          if (i >= u_num_hotspots) break;
-          vec2 hScreen = u_hotspot_screen_positions[i];
-          float hVal = u_hotspot_intensities[i] * diurnalMod;
+          float totalIntensity = 0.0;
+          vec3 weightedColor = vec3(0.0);
+          float totalWeight = 0.0;
+          float maxCoreVal = 0.0;
 
-          vec2 delta = fragUV - hScreen;
-          delta.x *= aspect;
+          // Base ground radius at zoom 11 (~3.5 km footprint)
+          float baseRadius = 0.022 * geoScale;
 
-          float downwindDist = dot(delta, windDir);
-          float crosswindDist = abs(dot(delta, windPerp));
+          for (int i = 0; i < 16; i++) {
+            if (i >= u_num_hotspots) break;
 
-          float sigma0 = 0.045 * zoomScale;
-          float alphaDisp = 0.15 * sqrt(max(0.001, zoomScale));
-          float sigmaY = sigma0 + alphaDisp * sqrt(max(0.0, downwindDist));
+            vec2 hPos = u_hotspot_screen_positions[i];
+            float pmVal = u_hotspot_intensities[i] * diurnalMod;
 
-          float crosswindProfile = exp(- (crosswindDist * crosswindDist) / (2.0 * sigmaY * sigmaY));
+            vec2 delta = fragUV - hPos;
+            delta.x *= aspect;
 
-          float longitudinalProfile;
-          if (downwindDist >= 0.0) {
-            longitudinalProfile = exp(- downwindDist / (0.35 * zoomScale));
-          } else {
-            longitudinalProfile = exp(- (downwindDist * downwindDist) / (0.0035 * zoomScale * zoomScale));
+            // Project along transport vector and crosswind
+            float downwind = dot(delta, windDir);
+            float crosswind = abs(dot(delta, windPerp));
+
+            // Subtle downwind stretching, compressed upwind
+            float sigmaDown = (downwind >= 0.0) 
+              ? baseRadius * (1.0 + 0.35 * clamp(u_wind_speed, 0.1, 1.2)) 
+              : baseRadius * 0.85;
+            float sigmaCross = baseRadius * 0.85;
+
+            // Mahalanobis distance squared
+            float q = (downwind * downwind) / (2.0 * sigmaDown * sigmaDown) + 
+                      (crosswind * crosswind) / (2.0 * sigmaCross * sigmaCross);
+
+            // Local cutoff: beyond 5.5 (~3.3 sigma), contribution drops to strictly zero
+            if (q < 5.5) {
+              float kernel = exp(-q) * smoothstep(5.5, 3.8, q);
+              float normVal = clamp(pmVal / 320.0, 0.0, 1.2);
+
+              float contrib = kernel * normVal;
+              totalIntensity += contrib;
+              weightedColor += getScientificPollutionColor(normVal) * contrib;
+              totalWeight += contrib;
+              maxCoreVal = max(maxCoreVal, contrib);
+            }
           }
 
-          float plumeContrib = (hVal / 320.0) * crosswindProfile * longitudinalProfile;
-          totalPlume += plumeContrib;
+          // If no hotspot influences this pixel, keep basemap completely dark & transparent
+          if (totalWeight < 0.003) {
+            gl_FragColor = vec4(0.0);
+            return;
+          }
 
-          float w = crosswindProfile * longitudinalProfile;
-          weightedPM += hVal * w;
-          totalWeight += w;
+          vec3 finalColor = weightedColor / totalWeight;
+
+          // Core vibrancy enhancement for extreme hotspots
+          if (maxCoreVal > 0.4) {
+            vec3 coreColor = getScientificPollutionColor(clamp(maxCoreVal * 1.15, 0.0, 1.1));
+            finalColor = mix(finalColor, coreColor, 0.35);
+          }
+
+          // Bounded alpha: avoids blowing out into opaque solid orange
+          float alpha = clamp(1.0 - exp(-2.2 * totalIntensity), 0.0, 0.78);
+          alpha *= smoothstep(0.003, 0.035, totalIntensity);
+
+          // Subtle natural atmospheric micro-vorticity
+          float microTurb = 0.95 + 0.05 * sin(fragUV.x * 50.0 + u_time * 0.35) * cos(fragUV.y * 50.0 + u_time * 0.35);
+          alpha *= microTurb;
+
+          gl_FragColor = vec4(finalColor, alpha);
+
+        } else {
+          // =========================================================================
+          // MODE B: CONTINUOUS CONCENTRATION FIELD
+          // Smooth regional gradient showing broad regional transport patterns
+          // =========================================================================
+
+          float fieldWeightedPM = 0.0;
+          float fieldTotalWeight = 0.0;
+          float fieldDensity = 0.0;
+          float fieldSigma = 0.075 * geoScale;
+
+          for (int i = 0; i < 16; i++) {
+            if (i >= u_num_hotspots) break;
+
+            vec2 hPos = u_hotspot_screen_positions[i];
+            float pmVal = u_hotspot_intensities[i] * diurnalMod;
+
+            vec2 delta = fragUV - hPos;
+            delta.x *= aspect;
+
+            float distSq = dot(delta, delta);
+            float w = exp(-distSq / (2.0 * fieldSigma * fieldSigma));
+
+            fieldWeightedPM += pmVal * w;
+            fieldTotalWeight += w;
+            fieldDensity += (pmVal / 320.0) * w;
+          }
+
+          if (fieldTotalWeight < 0.002) {
+            gl_FragColor = vec4(0.0);
+            return;
+          }
+
+          float localPM = fieldWeightedPM / fieldTotalWeight;
+          float pmNorm = clamp(localPM / 320.0, 0.0, 1.2);
+          vec3 fieldColor = getScientificPollutionColor(pmNorm);
+
+          float alpha = clamp(1.0 - exp(-1.4 * fieldDensity), 0.0, 0.65);
+          alpha *= smoothstep(0.02, 0.12, fieldDensity);
+
+          gl_FragColor = vec4(fieldColor, alpha);
         }
-
-        float localPM = totalWeight > 0.0 ? (weightedPM / totalWeight) : 80.0;
-        float pmNorm = clamp(localPM / 320.0, 0.0, 1.2);
-
-        // 2. Advection along wind vector with domain-warped turbulence
-        vec2 spaceCoord = fragUV * vec2(aspect, 1.0);
-        vec2 advectCoord = spaceCoord - windDir * u_time * (0.035 + u_wind_speed * 0.025);
-
-        vec2 warp1;
-        warp1.x = fbm(advectCoord * 5.0);
-        warp1.y = fbm(advectCoord * 5.0 + vec2(4.3, 1.7));
-
-        vec2 turbulentCoord = advectCoord + warp1 * 0.06;
-        float billow1 = fbm(turbulentCoord * 7.5);
-        float billow2 = fbm(turbulentCoord * 14.0 + u_time * 0.02);
-
-        float smokeStructure = billow1 * 0.65 + billow2 * 0.35;
-        float rawDensity = totalPlume * (0.45 + 0.95 * smokeStructure);
-
-        // 3. Optical extinction and alpha blending over dark basemap
-        float opticalDepth = rawDensity * 2.5;
-        float cloudAlpha = clamp(1.0 - exp(-opticalDepth), 0.0, 0.72);
-
-        vec3 cloudColor = getScientificPollutionColor(pmNorm);
-
-        gl_FragColor = vec4(cloudColor, cloudAlpha);
       }
     `;
 
@@ -384,9 +440,8 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       depthWrite: false,
     });
 
-    const geometry = new THREE.PlaneGeometry(6.4, 6.4, 32, 32);
+    const geometry = new THREE.PlaneGeometry(2, 2);
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.rotation.x = -Math.PI / 2;
     scene.add(mesh);
 
     const clock = new THREE.Clock();
@@ -422,13 +477,14 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
   // Update uniforms when dynamic props change
   useEffect(() => {
     if (threeRef.current) {
-      const transportRad = ((windDirectionDeg + 180) % 360 * Math.PI) / 180;
+      const transportRad = (((windDirectionDeg + 180) % 360) * Math.PI) / 180;
       threeRef.current.material.uniforms.u_wind.value.set(Math.sin(transportRad), -Math.cos(transportRad));
       threeRef.current.material.uniforms.u_wind_speed.value = windSpeedKmh / 20.0;
       threeRef.current.material.uniforms.u_hour_offset.value = hourOffset;
       threeRef.current.material.uniforms.u_layer_visible.value = layers.pollution ? 1.0 : 0.0;
+      threeRef.current.material.uniforms.u_vis_mode.value = visMode === 'hotspots' ? 0.0 : 1.0;
     }
-  }, [windDirectionDeg, windSpeedKmh, hourOffset, layers.pollution]);
+  }, [windDirectionDeg, windSpeedKmh, hourOffset, layers.pollution, visMode]);
 
   // 2D Wind Streamlines Animation Canvas
   useEffect(() => {
@@ -443,24 +499,24 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     canvas.width = w;
     canvas.height = h;
 
-    const numParticles = 180;
-    const transportRad = ((windDirectionDeg + 180) % 360 * Math.PI) / 180;
-    const dx = Math.sin(transportRad) * (windSpeedKmh / 10.0);
-    const dy = -Math.cos(transportRad) * (windSpeedKmh / 10.0);
+    const numParticles = 140;
+    const transportRad = (((windDirectionDeg + 180) % 360) * Math.PI) / 180;
+    const speedFactor = Math.max(windSpeedKmh / 12.0, 0.6);
+    const dx = Math.sin(transportRad) * speedFactor * 1.4;
+    const dy = -Math.cos(transportRad) * speedFactor * 1.4;
 
     const particles: Array<{ x: number; y: number; life: number; maxLife: number }> = [];
     for (let i = 0; i < numParticles; i++) {
       particles.push({
         x: Math.random() * w,
         y: Math.random() * h,
-        life: Math.random() * 80,
-        maxLife: 60 + Math.random() * 40,
+        life: Math.random() * 90,
+        maxLife: 70 + Math.random() * 50,
       });
     }
 
     const renderWind = () => {
       ctx.clearRect(0, 0, w, h);
-      ctx.strokeStyle = '#27D3E2';
       ctx.lineWidth = 1.0;
 
       for (let i = 0; i < numParticles; i++) {
@@ -472,16 +528,37 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           p.life = 0;
         }
 
-        const alpha = Math.sin((p.life / p.maxLife) * Math.PI) * 0.45;
+        const alpha = Math.sin((p.life / p.maxLife) * Math.PI) * 0.38;
         ctx.strokeStyle = `rgba(39, 211, 226, ${alpha})`;
+
+        const headX = p.x + dx * 2.4;
+        const headY = p.y + dy * 2.4;
 
         ctx.beginPath();
         ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x + dx * 2.2, p.y + dy * 2.2);
+        ctx.lineTo(headX, headY);
         ctx.stroke();
 
-        p.x += dx * 0.6;
-        p.y += dy * 0.6;
+        // Directional arrowhead at streamline head
+        if (p.life > 15 && p.life < p.maxLife - 10) {
+          const angle = Math.atan2(dy, dx);
+          const arrowSize = 3.5;
+          ctx.beginPath();
+          ctx.moveTo(headX, headY);
+          ctx.lineTo(
+            headX - arrowSize * Math.cos(angle - Math.PI / 6),
+            headY - arrowSize * Math.sin(angle - Math.PI / 6)
+          );
+          ctx.moveTo(headX, headY);
+          ctx.lineTo(
+            headX - arrowSize * Math.cos(angle + Math.PI / 6),
+            headY - arrowSize * Math.sin(angle + Math.PI / 6)
+          );
+          ctx.stroke();
+        }
+
+        p.x += dx * 0.7;
+        p.y += dy * 0.7;
       }
 
       animId = requestAnimationFrame(renderWind);
@@ -514,7 +591,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       {/* 1. Underlying Leaflet Interactive Map Container */}
       <div ref={mapContainerRef} style={{ width: '100%', height: '100%', zIndex: 1 }} />
 
-      {/* 2. Three.js WebGL Fluid Dispersion Canvas */}
+      {/* 2. WebGL Pollution Concentration Layer (Mode A: Hotspots / Mode B: Continuous) */}
       <canvas
         ref={canvasRef}
         style={{
@@ -525,10 +602,11 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           height: '100%',
           pointerEvents: 'none',
           zIndex: 10,
+          opacity: layers.pollution ? 0.95 : 0,
         }}
       />
 
-      {/* 3. Subtle Wind Streamlines 2D Canvas */}
+      {/* 3. Subtle Cyan Wind Streamlines 2D Canvas */}
       {layers.wind && (
         <canvas
           ref={windCanvasRef}
@@ -544,7 +622,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         />
       )}
 
-      {/* 4. Geographically Anchored Hotspot Markers */}
+      {/* 4. Geographically Anchored Hotspot Markers with Zoom-Dependent Detail */}
       {layers.hotspots && (
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 20 }}>
           {pinScreenCoords.map(({ id, sx, sy, data }) => {
@@ -552,29 +630,41 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
             const h = containerRef.current?.clientHeight || 600;
             if (sx < 10 || sx > w - 10 || sy < 10 || sy > h - 10) return null;
 
+            // Zoom-dependent detail filtering
+            const isMajorNode = ['anand_vihar', 'bawana', 'punjabi_bagh', 'okhla', 'dwarka'].includes(id);
             const isSelected = activePin?.id === id || selectedHotspotId === id;
+            if (currentZoom < 11 && !isMajorNode && !isSelected) {
+              return null; // Keep regional view clean and decluttered
+            }
 
-            let dotColor = '#F2CF76';
-            if (data.pm25 > 250) dotColor = '#A83B45';
-            else if (data.pm25 > 120) dotColor = '#EF554D';
-            else if (data.pm25 > 90) dotColor = '#F17A46';
-            else if (data.pm25 > 60) dotColor = '#F4A65A';
+            const forecastVal = getHotspotForecastVal(data.pm25, hourOffset);
+            const catInfo = getCategoryForPm(forecastVal);
 
             return (
               <div
                 key={id}
                 className={`hotspot-pill-marker ${isSelected ? 'active' : ''}`}
-                style={{ left: `${sx}px`, top: `${sy}px` }}
+                style={{ left: `${sx}px`, top: `${sy}px`, pointerEvents: 'auto' }}
                 onClick={(e) => {
                   e.stopPropagation();
                   setActivePin(data);
                   if (onSelectHotspot) onSelectHotspot(id);
                   if (onSelectLocality) onSelectLocality(id);
+                  if (mapInstanceRef.current) {
+                    mapInstanceRef.current.panTo([data.lat, data.lon], { animate: true, duration: 0.6 });
+                  }
                 }}
               >
-                <span className="hotspot-marker-dot" style={{ background: dotColor }} />
+                <span className="hotspot-marker-dot" style={{ background: catInfo.color }} />
                 <span>{lang === 'hi' ? data.name_hi : data.name_en}</span>
-                <span className="hotspot-marker-val">{Math.round(data.pm25)}</span>
+                {currentZoom >= 11 && (
+                  <span className="hotspot-marker-val">{forecastVal}</span>
+                )}
+                {currentZoom >= 13 && (
+                  <span style={{ fontSize: '9px', color: catInfo.color, fontWeight: 700, marginLeft: '2px' }}>
+                    {catInfo.label}
+                  </span>
+                )}
               </div>
             );
           })}
@@ -583,7 +673,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
 
       {/* 5. FLOATING MAP OVERLAYS */}
 
-      {/* TOP-LEFT: Layers, Wind Toggle, Forecast Horizon Chips */}
+      {/* TOP-LEFT: Layers, Mode Toggle, Wind Toggle, Forecast Horizon Chips */}
       <div className="map-floating-panel map-ctrl-top-left">
         {/* Layer Selector */}
         <div style={{ position: 'relative' }}>
@@ -591,7 +681,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
             className="horizon-chip"
             style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
             onClick={() => setShowLayerMenu(!showLayerMenu)}
-            title="Layer Visibility"
+            title="Layer Visibility & Mode"
           >
             <LayersIcon size={14} />
             <span>Layers</span>
@@ -601,57 +691,96 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
             <div
               style={{
                 position: 'absolute',
-                top: '32px',
+                top: '36px',
                 left: 0,
-                background: 'var(--bg-surface-elevated)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: '6px',
-                padding: '8px 12px',
+                background: 'var(--surface-elevated)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '10px 14px',
                 boxShadow: 'var(--shadow-panel)',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '6px',
+                gap: '8px',
                 zIndex: 60,
-                minWidth: '150px',
+                minWidth: '190px',
               }}
             >
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px' }}>
+              <div style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                Visualization Mode
+              </div>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button
+                  type="button"
+                  className={`segmented-pill-btn ${visMode === 'hotspots' ? 'active' : ''}`}
+                  style={{ flex: 1, padding: '4px 6px', fontSize: '11px', textAlign: 'center' }}
+                  onClick={() => setVisMode('hotspots')}
+                >
+                  Hotspots
+                </button>
+                <button
+                  type="button"
+                  className={`segmented-pill-btn ${visMode === 'continuous' ? 'active' : ''}`}
+                  style={{ flex: 1, padding: '4px 6px', fontSize: '11px', textAlign: 'center' }}
+                  onClick={() => setVisMode('continuous')}
+                >
+                  Continuous
+                </button>
+              </div>
+
+              <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '2px 0' }} />
+
+              <div style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                Active Layers
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', color: 'var(--text-secondary)' }}>
                 <input
                   type="checkbox"
                   checked={layers.pollution}
                   onChange={(e) => setLayers({ ...layers, pollution: e.target.checked })}
+                  style={{ accentColor: 'var(--accent)' }}
                 />
-                Pollution Field
+                Pollution Layer
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', color: 'var(--text-secondary)' }}>
                 <input
                   type="checkbox"
                   checked={layers.wind}
                   onChange={(e) => setLayers({ ...layers, wind: e.target.checked })}
+                  style={{ accentColor: 'var(--accent)' }}
                 />
-                Wind Vectors
+                Wind Streamlines
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', color: 'var(--text-secondary)' }}>
                 <input
                   type="checkbox"
                   checked={layers.hotspots}
                   onChange={(e) => setLayers({ ...layers, hotspots: e.target.checked })}
+                  style={{ accentColor: 'var(--accent)' }}
                 />
-                Hotspot Markers
+                Station Markers
               </label>
             </div>
           )}
         </div>
 
+        {/* Quick Mode Toggle */}
+        <button
+          className={`horizon-chip ${visMode === 'hotspots' ? 'active' : ''}`}
+          onClick={() => setVisMode(visMode === 'hotspots' ? 'continuous' : 'hotspots')}
+          title="Toggle between Individual Hotspots and Continuous Concentration Field"
+        >
+          <span>{visMode === 'hotspots' ? 'Hotspots' : 'Continuous'}</span>
+        </button>
+
         <div style={{ width: '1px', height: '14px', background: 'var(--border-subtle)' }} />
 
-        {/* Wind Toggle */}
+        {/* Quick Wind Toggle */}
         <button
           className={`horizon-chip ${layers.wind ? 'active' : ''}`}
           onClick={() => setLayers({ ...layers, wind: !layers.wind })}
           title="Toggle Wind Streamlines"
         >
-          <WindIcon size={13} color={layers.wind ? '#27D3E2' : '#A1ACB8'} />
+          <WindIcon size={13} color={layers.wind ? 'var(--accent)' : 'var(--text-secondary)'} />
           <span>Wind</span>
         </button>
 
@@ -752,8 +881,13 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
 
       {/* BOTTOM-RIGHT: Scientific PM2.5 Color Legend */}
       <div className="map-floating-panel map-ctrl-bottom-right">
-        <div style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--text-secondary)' }}>
-          PM2.5 · µg/m³
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+            PM2.5 · µg/m³
+          </span>
+          <span style={{ fontSize: '9.5px', color: 'var(--accent-cyan)', fontWeight: 600 }}>
+            {visMode === 'hotspots' ? 'Hotspots' : 'Continuous'}
+          </span>
         </div>
 
         <div
@@ -761,17 +895,17 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
             width: '180px',
             height: '8px',
             borderRadius: '2px',
-            background: 'linear-gradient(to right, #F2CF76 0%, #F4A65A 25%, #F17A46 50%, #EF554D 75%, #A83B45 100%)',
+            background: 'linear-gradient(to right, #E7C86F 0%, #E9A45C 25%, #E87849 50%, #E9564E 75%, #A83B45 100%)',
           }}
         />
 
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: 'var(--text-muted)', width: '180px' }}>
           <span>0</span>
-          <span>50</span>
-          <span>100</span>
-          <span>200</span>
-          <span>300</span>
-          <span>500</span>
+          <span>60</span>
+          <span>120</span>
+          <span>180</span>
+          <span>250</span>
+          <span>350+</span>
         </div>
       </div>
 
@@ -783,38 +917,55 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
             position: 'absolute',
             top: '70px',
             left: '20px',
-            width: '260px',
+            width: '270px',
             padding: '12px 14px',
             boxShadow: 'var(--shadow-popup)',
             zIndex: 45,
             display: 'flex',
             flexDirection: 'column',
-            gap: '6px',
+            gap: '8px',
+            background: 'var(--surface-elevated)',
+            border: '1px solid var(--border)',
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
               {lang === 'hi' ? activePin.name_hi : activePin.name_en}
             </span>
-            <button onClick={() => setActivePin(null)} style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
+            <button
+              onClick={() => setActivePin(null)}
+              style={{ color: 'var(--text-muted)', fontSize: '14px', cursor: 'pointer' }}
+              aria-label="Close popup"
+            >
               ✕
             </button>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-            <span style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)' }}>
-              {Math.round(activePin.pm25)}
-            </span>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>µg/m³ PM2.5</span>
-            <span className="severity-badge badge-very-poor" style={{ marginLeft: 'auto', fontSize: '10px' }}>
-              {activePin.category}
-            </span>
-          </div>
+          {(() => {
+            const fVal = getHotspotForecastVal(activePin.pm25, hourOffset);
+            const cat = getCategoryForPm(fVal);
+            return (
+              <>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                  <span style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                    {fVal}
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>µg/m³ PM2.5</span>
+                  <span className={`severity-badge ${cat.badge}`} style={{ marginLeft: 'auto', fontSize: '10px' }}>
+                    {cat.label}
+                  </span>
+                </div>
 
-          <div style={{ fontSize: '10.5px', color: 'var(--text-secondary)', borderTop: '1px solid var(--border-subtle)', paddingTop: '6px' }}>
-            Location: {activePin.lat.toFixed(3)}°N, {activePin.lon.toFixed(3)}°E<br />
-            Status: Elevated particulate concentration.
-          </div>
+                <div style={{ fontSize: '10.5px', color: 'var(--text-secondary)', borderTop: '1px solid var(--border-subtle)', paddingTop: '6px', lineHeight: 1.4 }}>
+                  <div><strong>Coordinates:</strong> {activePin.lat.toFixed(3)}°N, {activePin.lon.toFixed(3)}°E</div>
+                  <div><strong>Horizon:</strong> +{hourOffset}h forecast</div>
+                  <div style={{ color: 'var(--text-muted)', marginTop: '2px' }}>
+                    Real CPCB/DPCC monitoring station. Localized concentration core.
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
     </div>

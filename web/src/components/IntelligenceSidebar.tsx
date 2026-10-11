@@ -126,7 +126,7 @@ export const IntelligenceSidebar: React.FC<IntelligenceSidebarProps> = ({
                 marginLeft: 'auto',
                 fontSize: '11.5px',
                 fontWeight: 600,
-                color: '#EF554D',
+                color: 'var(--pollution-very-high)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '2px',

@@ -99,6 +99,10 @@
 - Upgraded atmospheric dispersion engine with scientific PM2.5 color ramp (`#F2CF76` -> `#F4A65A` -> `#F17A46` -> `#EF554D` -> `#A83B45`), 2D wind streamline particles, geographically anchored dark pill markers, and floating map panels (Top-Left layers/wind/horizon chips, Top-Right zoom/reset, Bottom-Left advisory, Bottom-Center timeline scrubber, Bottom-Right legend).
 - Verified with `make test` (10/10 pytest passing), `make lint` (ruff + TypeScript 0 errors), and production build.
 
-
-
-
+### 2026-10-11 20:05 IST — Design System Tokens, Synchronization Polish & Verification
+- Unified global CSS design tokens in `web/src/index.css` (`--background`, `--surface`, `--surface-elevated`, `--border`, `--accent`, `--pollution-*`).
+- Enhanced Leaflet dark cartography filter for OpenStreetMap with higher contrast (2.8) and obsidian tones.
+- Added dual dispersion mode toggle ("Hotspots" core plumes vs "Continuous" regional concentration field) to Leaflet top-left HUD.
+- Synchronized station pin popups with scrubber timeline offset for dynamic hourly PM2.5 forecast recalculation and CPCB category mapping.
+- Connected map hotspot marker clicks directly to locality selection in parent state.
+- Verified test suite (`make test` 10/10 passing), linter/typechecker (`make lint` 0 errors), offline mock generation (`make run-local`), and replay evaluation (`make evaluate`).

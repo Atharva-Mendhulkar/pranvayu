@@ -98,6 +98,7 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
           hotspots={DEFAULT_HOTSPOTS}
           selectedHotspotId={selectedHotspotId}
           onSelectHotspot={handleSelectHotspot}
+          onSelectLocality={onSelectLocality}
           hourOffset={hourOffset}
           onSeekHourOffset={setHourOffset}
           isPlaying={isPlaying}
