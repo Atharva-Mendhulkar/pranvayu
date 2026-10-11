@@ -50,6 +50,70 @@ export interface DelhiFluidMapProps {
 
 const FORECAST_HORIZONS = [0, 1, 3, 6, 12, 24];
 
+export interface TransportCorridor {
+  id: string;
+  lat: number;
+  lon: number;
+  label_en: string;
+  label_hi: string;
+  tier: 'regional' | 'local';
+}
+
+export const TRANSPORT_CORRIDORS: TransportCorridor[] = [
+  // 1. REGIONAL UPSTREAM ENTRY CORRIDOR (Punjab/Haryana agricultural inflow)
+  {
+    id: 'corridor-nw-inflow',
+    lat: 28.84,
+    lon: 77.04,
+    label_en: 'NW Inflow Corridor',
+    label_hi: 'उत्तर-पश्चिमी प्रवेश गलियारा',
+    tier: 'regional',
+  },
+  // 2. REGIONAL CENTRAL TRANSECT (Capital urban dispersion & Yamuna crossing)
+  {
+    id: 'corridor-central-axis',
+    lat: 28.61,
+    lon: 77.26,
+    label_en: 'Capital Trans-Yamuna Flow',
+    label_hi: 'केंद्रीय राजधानी प्रवाह',
+    tier: 'regional',
+  },
+  // 3. REGIONAL SOUTHEAST OUTFLOW (Plume exit toward Greater Noida/Faridabad)
+  {
+    id: 'corridor-se-outflow',
+    lat: 28.46,
+    lon: 77.38,
+    label_en: 'SE Outflow Corridor',
+    label_hi: 'दक्षिण-पूर्वी निकास गलियारा',
+    tier: 'regional',
+  },
+  // 4. LOCAL PLUME CORRIDORS (City zoom: downwind of key clusters)
+  {
+    id: 'corridor-local-anand-vihar',
+    lat: 28.62,
+    lon: 77.34,
+    label_en: 'Anand Vihar Axis',
+    label_hi: 'आनंद विहार अक्ष',
+    tier: 'local',
+  },
+  {
+    id: 'corridor-local-wazirpur',
+    lat: 28.68,
+    lon: 77.19,
+    label_en: 'North-West Plume Axis',
+    label_hi: 'उत्तर-पश्चिम अक्ष',
+    tier: 'local',
+  },
+  {
+    id: 'corridor-local-dwarka',
+    lat: 28.56,
+    lon: 77.08,
+    label_en: 'Dwarka Dispersion Axis',
+    label_hi: 'द्वारका परिक्षेपण अक्ष',
+    tier: 'local',
+  },
+];
+
 // Internal data structure for geographic advection particles
 interface AdvectionParticle {
   lat: number;
@@ -473,27 +537,37 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           float dDownwind = dot(dMeters, wDir);
           float dCrosswind = dot(dMeters, wPerp);
 
-          float sigma0 = 2200.0;
-          float sigmaDownwind = sigma0;
-          float sigmaCrosswind = sigma0 * 0.75;
-
+          // 1. Concentrated Core Component (Localized high-intensity plume core ~1350m)
+          float sigmaCoreDown = 1350.0;
+          float sigmaCoreCross = 900.0;
           if (dDownwind > 0.0) {
-            float windDriftMeters = u_wind_speed * 1800.0;
-            sigmaDownwind = sigma0 + windDriftMeters * 0.5;
-            sigmaCrosswind = sigma0 * 0.75 + (dDownwind * 0.12);
+            sigmaCoreDown += u_wind_speed * 1200.0 * 0.30;
           } else {
-            sigmaDownwind = sigma0 * 0.65;
+            sigmaCoreDown *= 0.65;
           }
+          float rCoreDown = dDownwind / max(sigmaCoreDown, 80.0);
+          float rCoreCross = dCrosswind / max(sigmaCoreCross, 80.0);
+          float distSqCore = rCoreDown * rCoreDown + rCoreCross * rCoreCross;
 
-          float rDownwind = dDownwind / max(sigmaDownwind, 100.0);
-          float rCrosswind = dCrosswind / max(sigmaCrosswind, 100.0);
-          float distSq = rDownwind * rDownwind + rCrosswind * rCrosswind;
+          // 2. Surrounding Halo Component (Soft dispersing plume gradient ~3200m)
+          float sigmaHaloDown = 3200.0;
+          float sigmaHaloCross = 2200.0;
+          if (dDownwind > 0.0) {
+            sigmaHaloDown += u_wind_speed * 1800.0 * 0.55;
+            sigmaHaloCross += dDownwind * 0.14;
+          } else {
+            sigmaHaloDown *= 0.60;
+          }
+          float rHaloDown = dDownwind / max(sigmaHaloDown, 120.0);
+          float rHaloCross = dCrosswind / max(sigmaHaloCross, 120.0);
+          float distSqHalo = rHaloDown * rHaloDown + rHaloCross * rHaloCross;
 
-          if (distSq > 9.0) continue;
+          if (distSqCore > 9.0 && distSqHalo > 9.0) continue;
 
           float basePm = u_hotspot_intensities[i] * diurnalMod;
-          float kernel = exp(-0.5 * distSq);
-          float cPoint = basePm * kernel;
+          float cCore = basePm * 0.75 * exp(-0.5 * distSqCore);
+          float cHalo = basePm * 0.25 * exp(-0.5 * distSqHalo);
+          float cPoint = cCore + cHalo;
 
           maxConcentration = max(maxConcentration, cPoint);
           sumConcentration += cPoint;
@@ -604,7 +678,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     const unitWDirX = Math.sin(transportRad);
     const unitWDirY = Math.cos(transportRad);
 
-    // Evaluates local concentration at any geographic coordinate
+    // Evaluates local concentration at any geographic coordinate (Two-Component: Core + Halo)
     const sampleConcentration = (lat: number, lon: number): number => {
       let maxC = 0;
       let sumC = 0;
@@ -618,24 +692,23 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         const dDown = dxMeters * unitWDirX + dyMeters * unitWDirY;
         const dCross = -dxMeters * unitWDirY + dyMeters * unitWDirX;
 
-        const sigma0 = 2200.0;
-        let sigmaDown = sigma0;
-        let sigmaCross = sigma0 * 0.75;
+        // 1. Concentrated Core
+        const sigmaCoreDown = dDown > 0 ? 1350.0 + (windSpeedKmh / 20.0) * 1200.0 * 0.30 : 1350.0 * 0.65;
+        const sigmaCoreCross = 900.0;
+        const distSqCore = (dDown / sigmaCoreDown) ** 2 + (dCross / sigmaCoreCross) ** 2;
 
-        if (dDown > 0) {
-          sigmaDown = sigma0 + (windSpeedKmh / 20.0) * 1800.0 * 0.5;
-          sigmaCross = sigma0 * 0.75 + dDown * 0.12;
-        } else {
-          sigmaDown = sigma0 * 0.65;
-        }
+        // 2. Dispersing Plume Halo
+        const sigmaHaloDown = dDown > 0 ? 3200.0 + (windSpeedKmh / 20.0) * 1800.0 * 0.55 : 3200.0 * 0.60;
+        const sigmaHaloCross = 2200.0 + (dDown > 0 ? dDown * 0.14 : 0);
+        const distSqHalo = (dDown / sigmaHaloDown) ** 2 + (dCross / sigmaHaloCross) ** 2;
 
-        const rDown = dDown / sigmaDown;
-        const rCross = dCross / sigmaCross;
-        const distSq = rDown * rDown + rCross * rCross;
+        if (distSqCore > 9.0 && distSqHalo > 9.0) continue;
 
-        if (distSq > 9.0) continue;
+        const basePm = h.pm25 * diurnalMod;
+        const cCore = distSqCore <= 9.0 ? basePm * 0.75 * Math.exp(-0.5 * distSqCore) : 0;
+        const cHalo = distSqHalo <= 9.0 ? basePm * 0.25 * Math.exp(-0.5 * distSqHalo) : 0;
+        const cPoint = cCore + cHalo;
 
-        const cPoint = (h.pm25 * diurnalMod) * Math.exp(-0.5 * distSq);
         if (cPoint > maxC) maxC = cPoint;
         sumC += cPoint;
       }
@@ -643,53 +716,79 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       return maxC + 0.25 * (sumC - maxC);
     };
 
+    // Precompute roulette sampling weights for hotspots: W_i = (pm25 / 100)^1.8
+    const hotspotWeights = hotspots.map((h) => Math.pow(Math.max(h.pm25, 30) / 100.0, 1.8));
+    const totalHotspotWeight = hotspotWeights.reduce((a, b) => a + b, 0);
+
+    const pickWeightedHotspot = (): HotspotData => {
+      let r = Math.random() * totalHotspotWeight;
+      for (let i = 0; i < hotspots.length; i++) {
+        if (r < hotspotWeights[i]) return hotspots[i];
+        r -= hotspotWeights[i];
+      }
+      return hotspots[0];
+    };
+
     // Color mapper for atmospheric particulate matter
     const getParticleColor = (pmVal: number, alpha: number) => {
       if (pmVal < 35) {
         // Background clean air: subtle slate grey
         return {
-          stroke: `rgba(161, 172, 184, ${alpha * 0.30})`,
-          fill: `rgba(161, 172, 184, ${alpha * 0.40})`,
+          stroke: `rgba(161, 172, 184, ${alpha * 0.25})`,
+          fill: `rgba(161, 172, 184, ${alpha * 0.35})`,
         };
       } else if (pmVal < 90) {
         // Moderate: translucent golden amber
         return {
-          stroke: `rgba(231, 200, 111, ${alpha * 0.50})`,
-          fill: `rgba(231, 200, 111, ${alpha * 0.65})`,
+          stroke: `rgba(231, 200, 111, ${alpha * 0.52})`,
+          fill: `rgba(231, 200, 111, ${alpha * 0.68})`,
         };
       } else if (pmVal < 180) {
         // Poor / Elevated: warm terracotta orange
         return {
-          stroke: `rgba(232, 120, 73, ${alpha * 0.68})`,
-          fill: `rgba(232, 120, 73, ${alpha * 0.85})`,
+          stroke: `rgba(232, 120, 73, ${alpha * 0.72})`,
+          fill: `rgba(232, 120, 73, ${alpha * 0.88})`,
         };
       } else {
-        // Very Poor / Severe: deep rich crimson
+        // Very Poor / Severe Core: deep rich crimson
         return {
-          stroke: `rgba(233, 86, 78, ${alpha * 0.78})`,
-          fill: `rgba(233, 86, 78, ${alpha * 0.95})`,
+          stroke: `rgba(233, 86, 78, ${alpha * 0.82})`,
+          fill: `rgba(233, 86, 78, ${alpha * 0.98})`,
         };
       }
     };
 
-    // Spawn a particle either inside an elevated hotspot plume or within current bounds
+    // Spawn a particle either accumulating inside a hotspot core or within current bounds
     const spawnParticle = (p: AdvectionParticle, mapBounds?: L.LatLngBounds) => {
       let lat = 28.6139;
       let lon = 77.2090;
 
-      // 70% probability: sample from elevated pollution regions
-      if (Math.random() < 0.72 && hotspots.length > 0) {
-        const randHotspot = hotspots[Math.floor(Math.random() * hotspots.length)];
-        const angle = Math.random() * Math.PI * 2;
-        // Bias slightly upwind so particles travel across hotspot core
-        const rDistMeters = Math.random() * 3200.0;
-        const dxM = Math.cos(angle) * rDistMeters;
-        const dyM = Math.sin(angle) * rDistMeters;
+      // 78% probability: sample from elevated pollution regions proportional to f(C(x))
+      if (Math.random() < 0.78 && hotspots.length > 0) {
+        const targetHotspot = pickWeightedHotspot();
+        const isCoreInflow = Math.random() < 0.72;
 
-        lat = randHotspot.lat + (dyM / 111139.0);
-        lon = randHotspot.lon + (dxM / (111139.0 * Math.cos((randHotspot.lat * Math.PI) / 180.0)));
+        let dxM = 0;
+        let dyM = 0;
+
+        if (isCoreInflow) {
+          // Particles spawn slightly upstream of the core and traverse directly through the center
+          const upwindDist = 180.0 + Math.random() * 820.0;
+          const crossDist = (Math.random() - 0.5) * 1100.0;
+          dxM = -unitWDirX * upwindDist + (-unitWDirY) * crossDist;
+          dyM = -unitWDirY * upwindDist + unitWDirX * crossDist;
+        } else {
+          // Particles spawn along the downwind halo plume tail
+          const downwindDist = 750.0 + Math.random() * 3200.0;
+          const crossDist = (Math.random() - 0.5) * 2000.0;
+          dxM = unitWDirX * downwindDist + (-unitWDirY) * crossDist;
+          dyM = unitWDirY * downwindDist + unitWDirX * crossDist;
+        }
+
+        lat = targetHotspot.lat + dyM / 111139.0;
+        lon = targetHotspot.lon + dxM / (111139.0 * Math.cos((targetHotspot.lat * Math.PI) / 180.0));
       } else if (mapBounds) {
-        // 28% probability: sample uniformly across viewport bounds
+        // 22% probability: sample uniformly across viewport bounds for atmospheric context
         const south = mapBounds.getSouth();
         const north = mapBounds.getNorth();
         const west = mapBounds.getWest();
@@ -952,12 +1051,186 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         p.y += dy * 0.75;
       }
 
+      // =====================================================================
+      // ZOOM-ADAPTIVE TRANSPORT ARROWS (Dominant Regional & Local Corridors)
+      // =====================================================================
+      const currentMapZoom = mapInstanceRef.current ? mapInstanceRef.current.getZoom() : currentZoom;
+      const transDeg = ((windDirectionDeg + 180) % 360);
+      const transRad = (transDeg * Math.PI) / 180;
+      // Screen-space displacement unit vector (dx East/right, dy South/down)
+      const uDir = Math.sin(transRad);
+      const vDir = -Math.cos(transRad);
+      const arrowPhi = Math.atan2(vDir, uDir);
+      const now = performance.now();
+
+      TRANSPORT_CORRIDORS.forEach((corridor) => {
+        let opacity = 0;
+        let shaftLen = 0;
+        let shaftWidth = 0;
+        let headSize = 0;
+
+        if (corridor.tier === 'regional') {
+          // Regional arrows: dominant at zoom <= 10.5, fade out by zoom 12.8
+          if (currentMapZoom <= 10.5) {
+            opacity = 0.95;
+            shaftLen = 88;
+            shaftWidth = 3.6;
+            headSize = 19;
+          } else if (currentMapZoom <= 11.5) {
+            const t = (currentMapZoom - 10.5) / 1.0;
+            opacity = 0.95 - t * 0.35; // 0.95 -> 0.60
+            shaftLen = 88 - t * 26;    // 88 -> 62
+            shaftWidth = 3.6 - t * 0.8;
+            headSize = 19 - t * 5;
+          } else if (currentMapZoom <= 12.8) {
+            const t = (currentMapZoom - 11.5) / 1.3;
+            opacity = 0.60 - t * 0.60; // 0.60 -> 0.0
+            shaftLen = 62 - t * 20;
+            shaftWidth = 2.8 - t * 0.8;
+            headSize = 14 - t * 4;
+          } else {
+            opacity = 0;
+          }
+        } else {
+          // Local corridors: active at city zoom (11.5 - 13.8), fade out by zoom 14
+          if (currentMapZoom < 11.5) {
+            opacity = 0;
+          } else if (currentMapZoom <= 12.5) {
+            const t = (currentMapZoom - 11.5) / 1.0;
+            opacity = t * 0.85;        // 0 -> 0.85
+            shaftLen = 42 + t * 14;    // 42 -> 56
+            shaftWidth = 2.4;
+            headSize = 12;
+          } else if (currentMapZoom <= 13.8) {
+            const t = (currentMapZoom - 12.5) / 1.3;
+            opacity = 0.85 - t * 0.85; // 0.85 -> 0.0
+            shaftLen = 56 - t * 18;
+            shaftWidth = 2.4 - t * 0.6;
+            headSize = 12 - t * 3;
+          } else {
+            opacity = 0;
+          }
+        }
+
+        if (opacity <= 0.02 || !mapInstanceRef.current) return;
+
+        // Project geographically anchored coordinates
+        const cPt = mapInstanceRef.current.latLngToContainerPoint([corridor.lat, corridor.lon]);
+        if (cPt.x < -120 || cPt.x > w + 120 || cPt.y < -120 || cPt.y > h + 120) {
+          return;
+        }
+
+        const halfLen = shaftLen / 2;
+        const startX = cPt.x - uDir * halfLen;
+        const startY = cPt.y - vDir * halfLen;
+        const endX = cPt.x + uDir * halfLen;
+        const endY = cPt.y + vDir * halfLen;
+
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // 1. Dark high-contrast halo under shaft & arrowhead
+        ctx.strokeStyle = `rgba(8, 11, 15, ${opacity * 0.95})`;
+        ctx.lineWidth = shaftWidth + 4.5;
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+
+        ctx.fillStyle = `rgba(8, 11, 15, ${opacity * 0.95})`;
+        ctx.beginPath();
+        ctx.moveTo(endX + uDir * 3, endY + vDir * 3);
+        ctx.lineTo(
+          endX - headSize * Math.cos(arrowPhi - Math.PI / 5.2),
+          endY - headSize * Math.sin(arrowPhi - Math.PI / 5.2)
+        );
+        ctx.lineTo(
+          endX - headSize * 0.52 * Math.cos(arrowPhi),
+          endY - headSize * 0.52 * Math.sin(arrowPhi)
+        );
+        ctx.lineTo(
+          endX - headSize * Math.cos(arrowPhi + Math.PI / 5.2),
+          endY - headSize * Math.sin(arrowPhi + Math.PI / 5.2)
+        );
+        ctx.closePath();
+        ctx.fill();
+
+        // 2. Luminous Cyan Shaft
+        ctx.strokeStyle = `rgba(39, 211, 226, ${opacity * 0.92})`;
+        ctx.lineWidth = shaftWidth;
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+
+        // 3. Traveling Light Pulse along shaft
+        const pulseCycle = ((now * 0.0016) % 1.0);
+        const pulseX = startX + (endX - startX) * pulseCycle;
+        const pulseY = startY + (endY - startY) * pulseCycle;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${opacity * 0.88})`;
+        ctx.lineWidth = shaftWidth * 1.3;
+        ctx.beginPath();
+        ctx.moveTo(pulseX - uDir * 7, pulseY - vDir * 7);
+        ctx.lineTo(pulseX + uDir * 7, pulseY + vDir * 7);
+        ctx.stroke();
+
+        // 4. Sharp Aerodynamic Arrowhead
+        ctx.fillStyle = `rgba(39, 211, 226, ${opacity * 0.95})`;
+        ctx.beginPath();
+        ctx.moveTo(endX, endY);
+        ctx.lineTo(
+          endX - (headSize - 1) * Math.cos(arrowPhi - Math.PI / 5.5),
+          endY - (headSize - 1) * Math.sin(arrowPhi - Math.PI / 5.5)
+        );
+        ctx.lineTo(
+          endX - (headSize - 1) * 0.52 * Math.cos(arrowPhi),
+          endY - (headSize - 1) * 0.52 * Math.sin(arrowPhi)
+        );
+        ctx.lineTo(
+          endX - (headSize - 1) * Math.cos(arrowPhi + Math.PI / 5.5),
+          endY - (headSize - 1) * Math.sin(arrowPhi + Math.PI / 5.5)
+        );
+        ctx.closePath();
+        ctx.fill();
+
+        // 5. Regional Metadata Badge (zoom <= 11.2)
+        if (corridor.tier === 'regional' && currentMapZoom <= 11.2 && opacity > 0.35) {
+          const badgeText = `${lang === 'hi' ? corridor.label_hi : corridor.label_en} · ${Math.round(windSpeedKmh)} km/h → SE`;
+          ctx.font = '600 9px Mukta, sans-serif';
+          const tm = ctx.measureText(badgeText);
+          const bW = tm.width + 14;
+          const bH = 17;
+          const bX = cPt.x - bW / 2;
+          const bY = cPt.y - 22;
+
+          ctx.fillStyle = `rgba(11, 15, 20, ${opacity * 0.88})`;
+          ctx.strokeStyle = `rgba(39, 211, 226, ${opacity * 0.45})`;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          if (ctx.roundRect) {
+            ctx.roundRect(bX, bY, bW, bH, 3);
+          } else {
+            ctx.rect(bX, bY, bW, bH);
+          }
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = `rgba(241, 245, 249, ${opacity * 0.95})`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(badgeText, cPt.x, bY + bH / 2);
+        }
+
+        ctx.restore();
+      });
+
       animId = requestAnimationFrame(renderWind);
     };
 
     animId = requestAnimationFrame(renderWind);
     return () => cancelAnimationFrame(animId);
-  }, [windDirectionDeg, windSpeedKmh, layers.wind]);
+  }, [windDirectionDeg, windSpeedKmh, layers.wind, currentZoom, lang]);
 
   // Reset to Delhi NCR extent
   const handleResetRegion = () => {
@@ -1305,7 +1578,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
                   onChange={(e) => setLayers({ ...layers, wind: e.target.checked })}
                   style={{ accentColor: 'var(--accent-cyan)' }}
                 />
-                Wind Vectors (Streamlines)
+                Wind Vectors & Transport Arrows
               </label>
 
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', color: 'var(--text-secondary)' }}>
@@ -1467,33 +1740,58 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         </div>
       </div>
 
-      {/* BOTTOM-RIGHT: Scientific PM2.5 Color Legend */}
-      <div className="map-floating-panel map-ctrl-bottom-right">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--text-secondary)' }}>
-            PM2.5 · µg/m³
+      {/* BOTTOM-RIGHT: Multiscale Transport & Concentration Legend */}
+      <div className="map-floating-panel map-ctrl-bottom-right" style={{ padding: '9px 12px', minWidth: '205px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+          <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.4px', textTransform: 'uppercase' }}>
+            Air Intelligence Key
           </span>
-          <span style={{ fontSize: '9.5px', color: 'var(--accent-cyan)', fontWeight: 600 }}>
-            {visMode === 'hotspots' ? 'Hotspots' : 'Continuous'}
+          <span style={{ fontSize: '9px', color: 'var(--accent-cyan)', fontWeight: 600 }}>
+            {visMode === 'hotspots' ? 'Hotspot Cores' : 'Continuous'}
           </span>
         </div>
 
-        <div
-          style={{
-            width: '180px',
-            height: '8px',
-            borderRadius: '2px',
-            background: 'linear-gradient(to right, #E7C86F 0%, #E9A45C 25%, #E87849 50%, #E9564E 75%, #A83B45 100%)',
-          }}
-        />
+        {/* 1. Concentration Scale */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+          <div
+            style={{
+              width: '100%',
+              height: '6px',
+              borderRadius: '2px',
+              background: 'linear-gradient(to right, #E7C86F 0%, #E9A45C 25%, #E87849 50%, #E9564E 75%, #A83B45 100%)',
+            }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '8.5px', color: 'var(--text-muted)' }}>
+            <span>0 Good</span>
+            <span>90 Mod</span>
+            <span>180 Poor</span>
+            <span>250+ Severe</span>
+          </div>
+        </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: 'var(--text-muted)', width: '180px' }}>
-          <span>0</span>
-          <span>60</span>
-          <span>120</span>
-          <span>180</span>
-          <span>250</span>
-          <span>350+</span>
+        <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '5px 0 4px 0' }} />
+
+        {/* 2. Flow & Transport Symbology */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3.5px', fontSize: '9.5px', color: 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#A83B45', border: '1.5px solid #E9564E', flexShrink: 0 }} />
+            <span>Hotspot Core & Halo Gradient</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
+              <span style={{ width: '3px', height: '3px', borderRadius: '50%', background: '#E87849' }} />
+              <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#E9564E' }} />
+              <span style={{ width: '3px', height: '3px', borderRadius: '50%', background: '#A83B45' }} />
+            </div>
+            <span>Particle Transport (Mass Motion)</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <svg width="14" height="8" viewBox="0 0 14 8" fill="none" style={{ flexShrink: 0 }}>
+              <line x1="0" y1="4" x2="10" y2="4" stroke="#27D3E2" strokeWidth="1.8" />
+              <polygon points="9,1 14,4 9,7" fill="#27D3E2" />
+            </svg>
+            <span>{currentZoom <= 12 ? 'Dominant Regional Transport (SE)' : 'Local Transport Streamlines'}</span>
+          </div>
         </div>
       </div>
 

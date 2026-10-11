@@ -43,9 +43,20 @@ Phase: PranVayu Geospatial Air Intelligence Platform v2 Overhaul
   - Independent layer control: added dedicated "Particles" toggle with `ParticlesIcon`, density selector pills (`Auto`, `Low`, `Med`, `High`), and reduced-motion / visibilitychange handling with clamped $\Delta t \le 0.05\text{s}$.
   - Deep-linking & neighborhood inspection: supported URL parameters (`?locality=...&zoom=...`) and smooth `flyTo` on selection.
 
+- **Multiscale Pollution Transport Visualization (`web/src/components/DelhiFluidMap.tsx`, `backend/tests/test_multiscale_transport.py`)**:
+  - **Two-Component Concentrated Hotspot Model (Core + Halo)**: Upgraded WebGL fragment shader and client concentration sampler to co-axial Core (1350m downwind, 900m crosswind, weight 0.75) and Halo (3200m downwind, 2200m crosswind, weight 0.25). Creates distinct high-intensity cores that decay cleanly into the surrounding gradient without merging into one giant blob.
+  - **Atmospheric Grain Accumulation**: Implemented roulette-wheel sampling proportional to $f(C(x)) = (C / 100)^{1.8}$. 78% of particles spawn within active hotspots, with 72% biased slightly upwind so particles traverse directly through the center of the hotspot core, accumulating into a visibly dense cluster of fine grains that drift downwind.
+  - **Zoom-Adaptive Transport Arrows**: Implemented 6 geographically anchored transport corridors across Delhi NCR (NW Inflow Corridor, Capital Trans-Yamuna Flow, SE Outflow Corridor, and 3 local cluster axes).
+    - Regional zoom ($z \le 10.5$): Large prominent directional arrows (88px shaft, 19px aerodynamic arrowhead, dark contrast halo, traveling light pulse, and metadata pill badge: "NW Inflow Corridor · 14 km/h → SE").
+    - City zoom ($z = 11.5–13$): Regional arrows scale down smoothly; secondary local plume indicators emerge along active downwind axes.
+    - Neighborhood zoom ($z \ge 14$): Large arrows hide completely (`opacity: 0`), leaving fine-grained particle advection to reveal block-level flow.
+    - Direction accurately derived from $(\theta_{\text{met}} + 180) \bmod 360$ (NW $315^\circ \to$ SE $135^\circ$).
+  - **Air Intelligence Key**: Added compact two-tier legend in bottom-right corner distinguishing: (1) PM2.5 Concentration scale, (2) Particle Transport (Particulate Mass Motion), (3) Transport Vectors (Dominant Regional Arrows vs Local Streamlines).
+  - **Offline Unit Tests**: Added `backend/tests/test_multiscale_transport.py` (7 tests) verifying direction conversion, geodesic velocities, two-component core/halo separation, concentration-weighted sampling, zoom-adaptive curves, vector coherence, and calm wind fallback. Full suite 17/17 passing.
+
 - **Full Verification & Quality Assurance**:
   - Zero brown/orange tint on basemap: pure obsidian/charcoal cartography.
-  - 10/10 pytest unit tests passed offline (`make test`).
+  - 17/17 pytest unit tests passed offline (`make test`).
   - Production TypeScript and Vite builds passing with 0 lint errors (`make lint`).
   - High-resolution visual screenshots captured and verified across regional, city, and neighborhood zooms (1536x864).
 

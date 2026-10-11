@@ -138,3 +138,27 @@
 - Added URL deep linking (`?locality=...&zoom=...`) and automated `flyTo` on hotspot/station/school selection.
 - Verified offline with `make test` (10/10 pytest passing), `make lint` (ruff and TypeScript 0 errors), and captured/validated high-resolution visual evidence across regional, city, and neighborhood scales.
 
+### 2026-10-11 21:35 IST — Concentrated Hotspot Cores & Multiscale Transport Arrows
+- **Two-Component Hotspot Architecture (Core + Halo)**:
+  - Upgraded both the WebGL fragment shader and the client advection concentration sampler to a co-axial two-component Gaussian formulation:
+    - Tight localized core ($\sigma_{\text{down}} = 1350\text{m}, \sigma_{\text{cross}} = 900\text{m}$, weight 0.75) for urban and industrial emission clusters.
+    - Soft surrounding halo ($\sigma_{\text{down}} = 3200\text{m}, \sigma_{\text{cross}} = 2200\text{m}$, weight 0.25) representing downwind dispersion.
+  - Successfully prevents diffuse mega-blobs while producing distinct, high-intensity cores (Anand Vihar, Wazirpur, Bawana, Jahangirpuri) that decay cleanly to black/charcoal basemap outside the plume perimeter.
+- **Concentration-Weighted Atmospheric Grain Accumulation**:
+  - Implemented roulette-wheel sampling $P_i \propto (C_i / 100)^{1.8}$ so severe hotspots receive higher grain allocations (~5× more particles than low-pollution nodes).
+  - Biased 72% of hotspot spawns slightly upstream of the core center so grains traverse directly through the epicenter, creating a visibly dense accumulation of crimson and terracotta particles in the core before drifting downwind into the plume tail.
+- **Zoom-Adaptive Transport Arrows**:
+  - Implemented 6 geographically anchored transport corridors across Delhi NCR (NW Inflow, Capital Trans-Yamuna Flow, SE Outflow, Anand Vihar axis, Wazirpur axis, Dwarka axis).
+  - Derived transport direction strictly from meteorological wind: $\theta_{\text{trans}} = (\theta_{\text{met}} + 180) \bmod 360$ (NW $315^\circ \to$ SE $135^\circ$).
+  - Smooth zoom-adaptive scaling:
+    - Regional ($z \le 10.5$): Prominent directional transport arrows (88px shaft, 19px aerodynamic arrowhead, dark halo underlay, traveling light pulse, and metadata pill badge).
+    - City ($z = 11.5–13$): Regional arrows scale down smoothly; secondary local corridor indicators emerge along active plume axes.
+    - Neighborhood ($z \ge 14$): Large arrows hide completely (`opacity: 0`), leaving fine-grained particle advection to reveal block-level transport.
+- **Air Intelligence Key**:
+  - Added a compact two-tier key in the bottom-right corner distinguishing: (1) PM2.5 Concentration scale, (2) Particle Transport (Particulate Mass Motion), and (3) Transport Vectors (Dominant Regional Arrows vs Local Streamlines).
+- **Test Suite & Verification**:
+  - Wrote `backend/tests/test_multiscale_transport.py` with 7 offline unit tests.
+  - Verified with `make test` (17/17 pytest tests passing offline) and `make lint` (ruff check + tsc + vite build 0 errors).
+  - Captured and inspected visual evidence at Regional zoom ($z=10$), City zoom ($z=12$), and Neighborhood zoom ($z=14$).
+
+
