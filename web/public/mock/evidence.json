@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "run_id": "stubble_2025_nov",
+  "window": [
+    "2025-10-28",
+    "2025-11-08"
+  ],
+  "data_mode": "oracle_winds",
+  "n_stations": 10,
+  "n_days": 11,
+  "calibration_days": 4,
+  "evaluation_days": 7,
+  "metrics": {
+    "m1_events": {
+      "events": 8,
+      "hit_rate": 0.88,
+      "false_alarm_ratio": 0.22,
+      "median_lead_h": 14.5,
+      "baseline_fire_count": {
+        "hit_rate": 0.75,
+        "false_alarm_ratio": 0.45,
+        "median_lead_h": 10.0
+      },
+      "baseline_wind_sector": {
+        "hit_rate": 0.62,
+        "false_alarm_ratio": 0.44,
+        "median_lead_h": 8.0
+      }
+    },
+    "m2_error": {
+      "lead_6_24": {
+        "mae": {
+          "model": 28.4,
+          "persistence": 42.1,
+          "raw_cams": 54.8,
+          "same_hour": 39.5
+        },
+        "rmse": {
+          "model": 36.2,
+          "persistence": 55.4,
+          "raw_cams": 68.2,
+          "same_hour": 51.0
+        },
+        "bias": {
+          "model": 3.2,
+          "persistence": -1.1,
+          "raw_cams": -22.4,
+          "same_hour": -4.5
+        },
+        "skill_vs_persistence": 0.33,
+        "category_agreement_exact": 0.68,
+        "category_agreement_within_one": 0.94
+      },
+      "lead_24_48": {
+        "mae": {
+          "model": 38.6,
+          "persistence": 58.2,
+          "raw_cams": 62.1,
+          "same_hour": 44.8
+        },
+        "rmse": {
+          "model": 49.1,
+          "persistence": 74.3,
+          "raw_cams": 79.5,
+          "same_hour": 58.2
+        },
+        "bias": {
+          "model": 5.8,
+          "persistence": -2.4,
+          "raw_cams": -28.1,
+          "same_hour": -6.1
+        },
+        "skill_vs_persistence": 0.34,
+        "category_agreement_exact": 0.58,
+        "category_agreement_within_one": 0.88
+      }
+    },
+    "m3_verdicts": {
+      "confusion": {
+        "go_as_go": 42,
+        "go_as_limit": 6,
+        "go_as_skip": 1,
+        "limit_as_go": 5,
+        "limit_as_limit": 38,
+        "limit_as_skip": 4,
+        "skip_as_go": 2,
+        "skip_as_limit": 5,
+        "skip_as_skip": 57
+      },
+      "unsafe_error_rate": 0.02,
+      "mild_error_rate": 0.09,
+      "over_caution_rate": 0.04
+    },
+    "m4_calibration": {
+      "band_coverage": {
+        "lead_0_6": 0.82,
+        "lead_6_24": 0.79,
+        "lead_24_48": 0.76
+      },
+      "mae_by_confidence": {
+        "high": 22.1,
+        "medium": 32.5,
+        "low": 47.8
+      }
+    },
+    "m5_smoke_effect": {
+      "excess_when_smoke": 48.6,
+      "ci": [
+        31.2,
+        66.4
+      ]
+    }
+  },
+  "limits": [
+    "Winds are analysis values (ECMWF ERA5 / IFS), not raw historical forecasts; real forecast lead may be narrower.",
+    "Night-time fires and small burns obscured by cloud cover are not captured by VIIRS satellites.",
+    "Station coverage was restricted to 10 stations with >=80% valid hourly data across the window."
+  ],
+  "generated_at": "2026-10-10T22:28:14.213343+00:00"
+}

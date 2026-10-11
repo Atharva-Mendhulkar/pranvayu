@@ -1,0 +1,122 @@
+[
+  {
+    "id": "dwarka",
+    "name_en": "Dwarka",
+    "name_hi": "द्वारका",
+    "lat": 28.59,
+    "lon": 77.05,
+    "openaq_location_id": "8118",
+    "station_name": "Dwarka Sector 8, Delhi - DPCC",
+    "elevation_m": 220
+  },
+  {
+    "id": "rohini",
+    "name_en": "Rohini",
+    "name_hi": "रोहिणी",
+    "lat": 28.73,
+    "lon": 77.12,
+    "openaq_location_id": "8119",
+    "station_name": "Rohini Sector 16, Delhi - DPCC",
+    "elevation_m": 220
+  },
+  {
+    "id": "anand_vihar",
+    "name_en": "Anand Vihar",
+    "name_hi": "आनंद विहार",
+    "lat": 28.65,
+    "lon": 77.31,
+    "openaq_location_id": "8120",
+    "station_name": "Anand Vihar, Delhi - DPCC",
+    "elevation_m": 220
+  },
+  {
+    "id": "ito",
+    "name_en": "ITO",
+    "name_hi": "आईटीओ",
+    "lat": 28.63,
+    "lon": 77.24,
+    "openaq_location_id": "8121",
+    "station_name": "ITO, Delhi - CPCB",
+    "elevation_m": 220
+  },
+  {
+    "id": "rk_puram",
+    "name_en": "R K Puram",
+    "name_hi": "आर के पुरम",
+    "lat": 28.56,
+    "lon": 77.18,
+    "openaq_location_id": "8122",
+    "station_name": "R K Puram, Delhi - DPCC",
+    "elevation_m": 220
+  },
+  {
+    "id": "punjabi_bagh",
+    "name_en": "Punjabi Bagh",
+    "name_hi": "पंजाबी बाग",
+    "lat": 28.67,
+    "lon": 77.13,
+    "openaq_location_id": "8123",
+    "station_name": "Punjabi Bagh, Delhi - DPCC",
+    "elevation_m": 220
+  },
+  {
+    "id": "mandir_marg",
+    "name_en": "Mandir Marg",
+    "name_hi": "मंदिर मार्ग",
+    "lat": 28.63,
+    "lon": 77.20,
+    "openaq_location_id": "8124",
+    "station_name": "Mandir Marg, Delhi - DPCC",
+    "elevation_m": 220
+  },
+  {
+    "id": "jahangirpuri",
+    "name_en": "Jahangirpuri",
+    "name_hi": "जहांगीरपुरी",
+    "lat": 28.73,
+    "lon": 77.17,
+    "openaq_location_id": "8125",
+    "station_name": "Jahangirpuri, Delhi - DPCC",
+    "elevation_m": 220
+  },
+  {
+    "id": "bawana",
+    "name_en": "Bawana",
+    "name_hi": "बवाना",
+    "lat": 28.79,
+    "lon": 77.05,
+    "openaq_location_id": "8126",
+    "station_name": "Bawana, Delhi - DPCC",
+    "elevation_m": 220
+  },
+  {
+    "id": "okhla",
+    "name_en": "Okhla",
+    "name_hi": "ओखला",
+    "lat": 28.53,
+    "lon": 77.27,
+    "openaq_location_id": "8127",
+    "station_name": "Okhla Phase 2, Delhi - DPCC",
+    "elevation_m": 220
+  },
+  {
+    "id": "wazirpur",
+    "name_en": "Wazirpur",
+    "name_hi": "वज़ीरपुर",
+    "lat": 28.70,
+    "lon": 77.16,
+    "openaq_location_id": "8128",
+    "station_name": "Wazirpur, Delhi - DPCC",
+    "elevation_m": 220
+  },
+  {
+    "id": "siri_fort",
+    "name_en": "Siri Fort",
+    "name_hi": "सिरी फोर्ट",
+    "lat": 28.55,
+    "lon": 77.22,
+    "openaq_location_id": "8129",
+    "station_name": "Siri Fort, Delhi - CPCB",
+    "elevation_m": 220
+  }
+]

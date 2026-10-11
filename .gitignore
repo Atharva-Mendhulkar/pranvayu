@@ -1,40 +1,51 @@
-# Dependencies
-node_modules/
-.pnpm-store/
-*.egg-info/
+# Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+/lib/
+/lib64/
+!web/src/lib/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
-# Environment variables
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+web/dist/
+web/build/
+
+# AWS SAM
+.aws-sam/
+samconfig.toml.bak
+
+# Secrets & Local Env
 .env
 .env.local
 .env.*.local
+*.pem
+*.key
 
-venv/
-.venv/
-backend/venv/
-
-# Build outputs
-dist/
-build/
-.next/
-out/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Logs
-*.log
-
-# OS
+# System
 .DS_Store
 Thumbs.db
-
-# Project-specific
-.kiro
-research_init

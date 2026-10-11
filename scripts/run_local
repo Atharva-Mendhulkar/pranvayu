@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""Run the complete PranVayu pipeline offline on fixtures and output mock payloads."""
+
+import json
+import os
+import sys
+from pathlib import Path
+import yaml
+
+# Add backend to sys.path
+REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "backend"))
+
+from pv.sources.fires import get_fires
+from pv.sources.winds import fetch_wind_forecast
+from pv.sources.cams import fetch_cams_forecast
+from pv.sources.obs import fetch_station_obs
+from pv.model.rules import export_browser_rules
+from pv.payload.validator import validate_forecast_payload
+from pv.replay.evaluate import run_evaluation
+from handlers.model_run import run_pipeline_for_locality
+
+
+def main():
+    print("=" * 60)
+    print("PranVayu: Running offline pipeline on test fixtures...")
+    print("=" * 60)
+
+    config_dir = REPO_ROOT / "config"
+    mock_dir = REPO_ROOT / "web" / "public" / "mock"
+    mock_dir.mkdir(parents=True, exist_ok=True)
+
+    with open(config_dir / "localities.json") as f:
+        localities = json.load(f)
+
+    with open(config_dir / "model.yaml") as f:
+        model_cfg = yaml.safe_load(f)
+
+    with open(config_dir / "thresholds.yaml") as f:
+        thresholds_cfg = yaml.safe_load(f)
+
+    with open(config_dir / "timetable_defaults.json") as f:
+        timetable_defaults = json.load(f)
+
+    with open(config_dir / "grap.json") as f:
+        grap_cfg = json.load(f)
+
+    smoke_levels_cfg = None
+    if (config_dir / "smoke_levels.json").exists():
+        with open(config_dir / "smoke_levels.json") as f:
+            smoke_levels_cfg = json.load(f)
+
+    bands_cfg = None
+    if (config_dir / "bands.json").exists():
+        with open(config_dir / "bands.json") as f:
+            bands_cfg = json.load(f)
+
+    # 1. Export browser-side recalculation rules
+    rules_out = REPO_ROOT / "web" / "public" / "rules.json"
+    rules_out.parent.mkdir(parents=True, exist_ok=True)
+    export_browser_rules(thresholds_cfg, str(rules_out))
+    print(f"✓ Exported browser rules: {rules_out}")
+
+    # 2. Run evaluation to produce evidence.json
+    evidence = run_evaluation(output_dir=mock_dir)
+    print(f"✓ Generated evidence.json ({len(evidence['metrics'])} metric suites)")
+
+    # 3. Ingest fixtures
+    fires = get_fires()
+    print(f"✓ Loaded {len(fires)} active fire detections from fixtures")
+
+    # 4. Run pipeline for each locality
+    successful = 0
+    for loc in localities:
+        loc_id = loc["id"]
+        winds = fetch_wind_forecast(loc["lat"], loc["lon"])
+        cams = fetch_cams_forecast(loc["lat"], loc["lon"])
+        obs = fetch_station_obs(loc_id, openaq_id=loc.get("openaq_location_id"))
+
+        payload = run_pipeline_for_locality(
+            locality=loc,
+            fires=fires,
+            wind_series=winds,
+            cams_series=cams,
+            obs_series=obs,
+            model_cfg=model_cfg,
+            thresholds_cfg=thresholds_cfg,
+            timetable_defaults=timetable_defaults,
+            grap_cfg=grap_cfg,
+            smoke_levels_cfg=smoke_levels_cfg,
+            bands_cfg=bands_cfg,
+            mode="live",
+        )
+
+        # Validate against contract
+        validate_forecast_payload(payload)
+
+        # Save to web/public/mock/<id>.json
+        out_file = mock_dir / f"{loc_id}.json"
+        with open(out_file, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2)
+
+        successful += 1
+        print(f"  → [{successful}/{len(localities)}] {loc['name_en']} ({loc_id}): verified & written ({len(payload['series'])} series pts)")
+
+    print("=" * 60)
+    print(f"Successfully generated and validated {successful} mock payloads in {mock_dir}!")
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    main()

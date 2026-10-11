@@ -1,0 +1,43 @@
+# PranVayu Decision Thresholds Configuration
+activities:
+  light:
+    name: "Light activity"
+    go_max: 60.0
+    limit_max: 90.0
+    periods: ["arrival", "assembly", "break", "dispersal"]
+  strenuous:
+    name: "Strenuous activity"
+    go_max: 30.0
+    limit_max: 60.0
+    periods: ["pe"]
+
+period_durations_min:
+  arrival: 30
+  assembly: 30
+  break: 30
+  pe: 45
+  dispersal: 30
+
+clean_window:
+  start_hour: 6
+  end_hour: 19
+  window_minutes: 60
+  step_minutes: 30
+
+confidence_decision:
+  high: "p50"
+  medium: "mid_p50_p90"
+  low: "p90"
+
+trapping:
+  blh_max_m: 400.0
+  wind_max_ms: 2.0
+  consecutive_hours: 3
+  morning_start_hour: 5
+  morning_end_hour: 11
+  evening_start_hour: 17
+  evening_end_hour: 23
+
+dust:
+  pm10_pm25_ratio_min: 2.5
+  wind_min_ms: 4.0

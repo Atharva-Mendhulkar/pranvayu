@@ -1,0 +1,193 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: PranVayu - Serverless School-Day Air Advisory Pipeline (ap-south-1)
+
+Globals:
+  Function:
+    Timeout: 120
+    MemorySize: 512
+    Runtime: python3.12
+    Architectures:
+      - arm64
+    Environment:
+      Variables:
+        DYNAMODB_TABLE_PV_STATE: !Ref PvStateTable
+        S3_BUCKET_NAME: !Ref PvDataBucket
+        CONFIG_DIR: /var/task/config
+
+Resources:
+  # ============================================================================
+  # Storage: S3 Bucket & DynamoDB State Table
+  # ============================================================================
+  PvDataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'pv-data-${AWS::AccountId}-${AWS::Region}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  PvStateTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: pv-state
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+
+  # ============================================================================
+  # API Gateway HTTP API
+  # ============================================================================
+  PvHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Name: pv-http
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowMethods:
+          - GET
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+        MaxAge: 600
+
+  # ============================================================================
+  # Lambdas: Ingest Jobs, Scheduled Model Run, Read-Only API
+  # ============================================================================
+  PvApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend
+      Handler: handlers.api.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref PvStateTable
+        - S3ReadPolicy:
+            BucketName: !Sub 'pv-data-${AWS::AccountId}-${AWS::Region}'
+      Events:
+        GetLocalities:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PvHttpApi
+            Path: /v1/localities
+            Method: GET
+        GetForecast:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PvHttpApi
+            Path: /v1/forecast
+            Method: GET
+        GetReplay:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PvHttpApi
+            Path: /v1/replay
+            Method: GET
+        GetEvidence:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PvHttpApi
+            Path: /v1/evidence
+            Method: GET
+        GetHealth:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PvHttpApi
+            Path: /v1/health
+            Method: GET
+
+  PvModelRunFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend
+      Handler: handlers.model_run.handler
+      Timeout: 180
+      MemorySize: 1024
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PvStateTable
+        - S3CrudPolicy:
+            BucketName: !Sub 'pv-data-${AWS::AccountId}-${AWS::Region}'
+      Events:
+        HourlySchedule:
+          Type: Schedule
+          Properties:
+            Schedule: cron(25 * * * ? *) # Hourly at +25 minutes
+
+  PvIngestFiresFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend
+      Handler: handlers.ingest_fires.handler
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub 'pv-data-${AWS::AccountId}-${AWS::Region}'
+      Events:
+        HourlyFires:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 hour)
+
+  PvIngestObsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend
+      Handler: handlers.ingest_obs.handler
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub 'pv-data-${AWS::AccountId}-${AWS::Region}'
+      Events:
+        HourlyObs:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 hour)
+
+  PvIngestWindsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend
+      Handler: handlers.ingest_winds.handler
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub 'pv-data-${AWS::AccountId}-${AWS::Region}'
+      Events:
+        SixHourlyWinds:
+          Type: Schedule
+          Properties:
+            Schedule: rate(6 hours)
+
+  PvIngestCamsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend
+      Handler: handlers.ingest_cams.handler
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub 'pv-data-${AWS::AccountId}-${AWS::Region}'
+      Events:
+        SixHourlyCams:
+          Type: Schedule
+          Properties:
+            Schedule: rate(6 hours)
+
+Outputs:
+  ApiEndpoint:
+    Description: HTTP API endpoint URL
+    Value: !Sub 'https://${PvHttpApi}.execute-api.${AWS::Region}.amazonaws.com'
+  DynamoDBTable:
+    Description: DynamoDB pv-state table name
+    Value: !Ref PvStateTable
+  S3Bucket:
+    Description: S3 Data Bucket Name
+    Value: !Ref PvDataBucket

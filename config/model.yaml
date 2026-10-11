@@ -1,0 +1,38 @@
+# PranVayu Atmospheric Model Configuration
+domain:
+  west: 73.5
+  south: 27.5
+  east: 78.5
+  north: 32.5
+
+trajectory:
+  ensemble_members_k: 24
+  release_levels_hpa: [975, 950, 925]
+  back_trajectory_length_h: 60
+  step_min: 30
+  time_jitter_h: 2
+  speed_error_sigma: 0.15
+  direction_error_sigma_deg: 10.0
+  step_noise_ms: 0.5
+
+influence:
+  fire_aggregation_grid_deg: 0.1
+  fire_aggregation_window_h: 6
+  max_sources: 1500
+  fire_age_min_h: -6
+  fire_age_max_h: 36
+  sigma0_km: 20.0
+  sigma_growth_km_per_h: 1.0
+  blh_reference_m: 400.0
+  blh_floor: 0.25
+  decay_lifetime_h: 72.0
+
+correction:
+  bias_mode: "ratio"
+  tau_b_h: 24.0
+  min_matched_hours: 12
+  matched_window_h: 24
+  min_cams_val: 10.0
+  ratio_clip_min: 0.5
+  ratio_clip_max: 3.0
+  blend_lead_h: 6

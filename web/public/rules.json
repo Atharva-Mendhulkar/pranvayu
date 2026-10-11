@@ -1,0 +1,36 @@
+{
+  "activities": {
+    "light": {
+      "name": "Light activity",
+      "go_max": 60.0,
+      "limit_max": 90.0,
+      "periods": [
+        "arrival",
+        "assembly",
+        "break",
+        "dispersal"
+      ]
+    },
+    "strenuous": {
+      "name": "Strenuous activity",
+      "go_max": 30.0,
+      "limit_max": 60.0,
+      "periods": [
+        "pe"
+      ]
+    }
+  },
+  "period_durations_min": {
+    "arrival": 30,
+    "assembly": 30,
+    "break": 30,
+    "pe": 45,
+    "dispersal": 30
+  },
+  "clean_window": {
+    "start_hour": 6,
+    "end_hour": 19,
+    "window_minutes": 60,
+    "step_minutes": 30
+  }
+}

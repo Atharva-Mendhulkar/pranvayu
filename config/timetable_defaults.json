@@ -1,0 +1,37 @@
+[
+  {
+    "id": "arrival",
+    "label_en": "Arrival",
+    "label_hi": "आगमन",
+    "time": "07:30",
+    "activity_type": "light"
+  },
+  {
+    "id": "assembly",
+    "label_en": "Assembly",
+    "label_hi": "प्रार्थना सभा",
+    "time": "07:45",
+    "activity_type": "light"
+  },
+  {
+    "id": "break",
+    "label_en": "Break",
+    "label_hi": "मध्यांतर",
+    "time": "10:30",
+    "activity_type": "light"
+  },
+  {
+    "id": "pe",
+    "label_en": "PE",
+    "label_hi": "शारीरिक शिक्षा (पीटी)",
+    "time": "11:30",
+    "activity_type": "strenuous"
+  },
+  {
+    "id": "dispersal",
+    "label_en": "Dispersal",
+    "label_hi": "छुट्टी",
+    "time": "14:30",
+    "activity_type": "light"
+  }
+]
