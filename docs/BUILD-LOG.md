@@ -106,3 +106,21 @@
 - Synchronized station pin popups with scrubber timeline offset for dynamic hourly PM2.5 forecast recalculation and CPCB category mapping.
 - Connected map hotspot marker clicks directly to locality selection in parent state.
 - Verified test suite (`make test` 10/10 passing), linter/typechecker (`make lint` 0 errors), offline mock generation (`make run-local`), and replay evaluation (`make evaluate`).
+
+### 2026-10-11 20:15 IST — Individual Pollution Hotspot Rendering Engine & Obsidian Basemap
+- Eliminated all brown/orange/green muddy tints from the basemap by replacing the hue-shifted inverted filter with a pure 100% desaturated, inverted, high-contrast filter (`filter: grayscale(100%) invert(100%) contrast(1.7) brightness(0.5)`).
+- Diagnosed root cause of the "single diffuse smoke cloud" defect:
+  1. Excessive spatial kernel cutoff ($>3.3\sigma$) spanning distances between nearby Delhi monitoring stations.
+  2. Summed kernel weights blowing out the exponential alpha formula.
+  3. Color evaluated from station peak value rather than local field concentration, applying uniform orange across outer boundaries.
+- Re-architected rendering engine into a physically grounded Gaussian dispersion plume model:
+  - Euclidean distances calculated in ground meters ($dx, dy$) via latitude-dependent Web Mercator meters-per-pixel.
+  - Constant physical ground footprint ($\sigma_0 = 2.2$ km) across all camera zoom levels.
+  - Atmospheric transport: downwind plume elongation along meteorological transport vector with sharp upstream cutoff ($0.60 \times \sigma$).
+  - Smooth cutoff at $q < 4.5$ ($3\sigma$), falling to zero.
+  - Combined concentration formula: $C_{\text{local}} = C_{\text{max}} + 0.25 \times (C_{\text{sum}} - C_{\text{max}})$, preserving independent local maxima without runaway alpha summation.
+  - Direct local concentration-to-color mapping: clean air ($<25$ µg/m³) is 100% transparent black basemap; moderate air ($60-120$) is gentle amber; severe air ($>260$) forms deep, distinct maroon cores.
+- Fixed marker placement bug by adding `position: absolute` and `z-index: 25` to `.hotspot-pill-marker`, locking each pill marker directly over its physical hotspot core.
+- Repositioned station detail popup to stack above the advisory card (`bottom: 185px, left: 20px`), clearing the top-left layer and mode controls.
+- Verified via headless Chrome screenshot (1536x864) and confirmed 10/10 pytest unit tests passing.
+

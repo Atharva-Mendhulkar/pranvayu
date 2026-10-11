@@ -307,9 +307,9 @@ export const IntelligenceSidebar: React.FC<IntelligenceSidebarProps> = ({
             <span
               className="severity-badge"
               style={{
-                background: currentDay.confidence === 'high' ? 'rgba(39, 211, 226, 0.15)' : 'rgba(244, 166, 90, 0.15)',
-                color: currentDay.confidence === 'high' ? '#27D3E2' : '#F4A65A',
-                border: `1px solid ${currentDay.confidence === 'high' ? 'rgba(39, 211, 226, 0.4)' : 'rgba(244, 166, 90, 0.4)'}`,
+                background: currentDay.confidence === 'high' ? 'var(--accent-cyan-dim)' : 'rgba(161, 172, 184, 0.10)',
+                color: currentDay.confidence === 'high' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                border: `1px solid ${currentDay.confidence === 'high' ? 'var(--accent-border)' : 'var(--border-subtle)'}`,
               }}
             >
               {currentDay.confidence.toUpperCase()} CONFIDENCE

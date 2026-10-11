@@ -122,6 +122,9 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     const zoom = map.getZoom();
     setCurrentZoom(zoom);
 
+    // Exact meters per pixel at Delhi latitude (28.61° N) in Web Mercator
+    const metersPerPixel = (40075016.686 * Math.cos((28.61 * Math.PI) / 180)) / (256 * Math.pow(2, zoom));
+
     const screenPositions = new Float32Array(16 * 2);
     const coords = hotspots.slice(0, 16).map((item, i) => {
       const pt = map.latLngToContainerPoint([item.lat, item.lon]);
@@ -138,6 +141,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     if (threeRef.current) {
       threeRef.current.material.uniforms.u_hotspot_screen_positions.value = screenPositions;
       threeRef.current.material.uniforms.u_map_zoom.value = zoom;
+      threeRef.current.material.uniforms.u_meters_per_pixel.value = metersPerPixel;
       threeRef.current.material.uniforms.u_resolution.value.set(w, h);
     }
 
@@ -237,6 +241,9 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     const transportRad = (((windDirectionDeg + 180) % 360) * Math.PI) / 180;
     const windVec = new THREE.Vector2(Math.sin(transportRad), -Math.cos(transportRad));
 
+    const initialZoom = mapInstanceRef.current ? mapInstanceRef.current.getZoom() : 11.0;
+    const initialMpp = (40075016.686 * Math.cos((28.61 * Math.PI) / 180)) / (256 * Math.pow(2, initialZoom));
+
     const uniforms = {
       u_time: { value: 0.0 },
       u_wind: { value: windVec },
@@ -246,7 +253,8 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       u_hotspot_screen_positions: { value: new Float32Array(16 * 2) },
       u_hotspot_intensities: { value: hotspotIntensities },
       u_resolution: { value: new THREE.Vector2(width, height) },
-      u_map_zoom: { value: 11.0 },
+      u_map_zoom: { value: initialZoom },
+      u_meters_per_pixel: { value: initialMpp },
       u_hour_offset: { value: hourOffset },
       u_layer_visible: { value: layers.pollution ? 1.0 : 0.0 },
       u_vis_mode: { value: visMode === 'hotspots' ? 0.0 : 1.0 },
@@ -269,30 +277,58 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       uniform float u_hotspot_intensities[16];
       uniform vec2 u_resolution;
       uniform float u_map_zoom;
+      uniform float u_meters_per_pixel;
       uniform float u_hour_offset;
       uniform float u_layer_visible;
       uniform float u_vis_mode;
 
       varying vec2 vUv;
 
-      // Scientific PM2.5 Color Scale:
-      // LOW (#E7C86F) -> MODERATE (#E9A45C) -> HIGH (#E87849) -> VERY HIGH (#E9564E) -> EXTREME (#A83B45)
-      vec3 getScientificPollutionColor(float normVal) {
-        vec3 cLow = vec3(0.906, 0.784, 0.435);      // #E7C86F (0-60 µg/m³)
-        vec3 cMod = vec3(0.914, 0.643, 0.361);      // #E9A45C (60-120 µg/m³)
-        vec3 cHigh = vec3(0.910, 0.471, 0.286);     // #E87849 (120-180 µg/m³)
-        vec3 cVHigh = vec3(0.914, 0.337, 0.306);    // #E9564E (180-250 µg/m³)
-        vec3 cExt = vec3(0.659, 0.231, 0.271);      // #A83B45 (250+ µg/m³)
-
-        if (normVal <= 0.25) {
-          return mix(cLow, cMod, normVal / 0.25);
-        } else if (normVal <= 0.50) {
-          return mix(cMod, cHigh, (normVal - 0.25) / 0.25);
-        } else if (normVal <= 0.75) {
-          return mix(cHigh, cVHigh, (normVal - 0.50) / 0.25);
-        } else {
-          return mix(cVHigh, cExt, clamp((normVal - 0.75) / 0.25, 0.0, 1.0));
+      // Scientific PM2.5 Concentration Color Ramp:
+      // Maps exact PM2.5 in µg/m³:
+      // < 25 µg/m³: Clean / transparent (Alpha = 0.0)
+      // 25 - 60 µg/m³: LOW (#E7C86F) - Barely visible translucent golden yellow
+      // 60 - 120 µg/m³: MODERATE (#E9A45C) - Gentle warm amber
+      // 120 - 180 µg/m³: HIGH (#E87849) - Distinct warm orange
+      // 180 - 260 µg/m³: VERY HIGH (#E9564E) - Rich crimson
+      // > 260 µg/m³: EXTREME (#A83B45) - Deep intense maroon core
+      vec4 evaluatePollutionColorAndAlpha(float pmVal) {
+        if (pmVal < 25.0) {
+          return vec4(0.0);
         }
+
+        vec3 cLow    = vec3(0.906, 0.784, 0.435); // #E7C86F (Low / Good)
+        vec3 cMod    = vec3(0.914, 0.643, 0.361); // #E9A45C (Moderate)
+        vec3 cHigh   = vec3(0.910, 0.471, 0.286); // #E87849 (High / Poor)
+        vec3 cVHigh  = vec3(0.914, 0.337, 0.306); // #E9564E (Very High)
+        vec3 cExt    = vec3(0.659, 0.231, 0.271); // #A83B45 (Extreme / Severe)
+
+        vec3 rgb;
+        float alpha;
+
+        if (pmVal <= 60.0) {
+          float t = (pmVal - 25.0) / 35.0;
+          rgb = mix(cLow * 0.9, cLow, t);
+          alpha = mix(0.02, 0.14, t);
+        } else if (pmVal <= 120.0) {
+          float t = (pmVal - 60.0) / 60.0;
+          rgb = mix(cLow, cMod, t);
+          alpha = mix(0.14, 0.30, t);
+        } else if (pmVal <= 180.0) {
+          float t = (pmVal - 120.0) / 60.0;
+          rgb = mix(cMod, cHigh, t);
+          alpha = mix(0.30, 0.48, t);
+        } else if (pmVal <= 260.0) {
+          float t = (pmVal - 180.0) / 80.0;
+          rgb = mix(cHigh, cVHigh, t);
+          alpha = mix(0.48, 0.64, t);
+        } else {
+          float t = clamp((pmVal - 260.0) / 100.0, 0.0, 1.0);
+          rgb = mix(cVHigh, cExt, t);
+          alpha = mix(0.64, 0.76, t);
+        }
+
+        return vec4(rgb, alpha);
       }
 
       void main() {
@@ -301,14 +337,13 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           return;
         }
 
-        vec2 fragUV = vUv;
-        float aspect = u_resolution.x / u_resolution.y;
+        // Screen-space pixel position (0,0 is top-left)
+        vec2 fragPix = vec2(vUv.x * u_resolution.x, (1.0 - vUv.y) * u_resolution.y);
 
-        vec2 windDir = normalize(u_wind);
-        vec2 windPerp = vec2(-windDir.y, windDir.x);
-
-        // Geographic zoom scale: maintains constant ground footprint in kilometers
-        float geoScale = pow(2.0, clamp(u_map_zoom - 11.0, -2.5, 4.0));
+        // Normalized wind transport vector (direction toward which pollutants drift)
+        vec2 wDir = normalize(u_wind);
+        // Crosswind perpendicular vector
+        vec2 wPerp = vec2(-wDir.y, wDir.x);
 
         // Diurnal forecast curve modulation
         float diurnalMod = 0.92 + 0.22 * sin((u_hour_offset - 8.0) * 0.26);
@@ -316,118 +351,126 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         if (u_vis_mode < 0.5) {
           // =========================================================================
           // MODE A: INDIVIDUAL HOTSPOTS (DEFAULT)
-          // Localized Gaussian kernels with distinct cores and transparent space between
+          // Spatially distinct, geographically anchored hotspots with localized cores
           // =========================================================================
 
-          float totalIntensity = 0.0;
-          vec3 weightedColor = vec3(0.0);
-          float totalWeight = 0.0;
-          float maxCoreVal = 0.0;
+          float maxConcentration = 0.0;
+          float sumConcentration = 0.0;
 
-          // Base ground radius at zoom 11 (~3.5 km footprint)
-          float baseRadius = 0.022 * geoScale;
+          // Localized core radius on the ground: ~2.2 kilometers
+          // Clamped in screen pixels so it remains stable and clearly visible across zooms
+          float sigmaCoreMeters = clamp(2200.0, 16.0 * u_meters_per_pixel, 320.0 * u_meters_per_pixel);
+
+          // Atmospheric dispersion downwind expansion
+          float sigmaDownMeters = sigmaCoreMeters * (1.0 + 0.35 * clamp(u_wind_speed, 0.0, 1.2));
+          float sigmaUpMeters   = sigmaCoreMeters * 0.60;
+          float sigmaCrossMeters = sigmaCoreMeters * 0.80;
 
           for (int i = 0; i < 16; i++) {
             if (i >= u_num_hotspots) break;
 
-            vec2 hPos = u_hotspot_screen_positions[i];
-            float pmVal = u_hotspot_intensities[i] * diurnalMod;
+            // Hotspot anchor position in screen pixels
+            vec2 hPix = vec2(
+              u_hotspot_screen_positions[i].x * u_resolution.x,
+              (1.0 - u_hotspot_screen_positions[i].y) * u_resolution.y
+            );
+            float basePm = u_hotspot_intensities[i] * diurnalMod;
 
-            vec2 delta = fragUV - hPos;
-            delta.x *= aspect;
+            // Distance in screen pixels
+            vec2 deltaPix = fragPix - hPix;
+
+            // Convert to physical ground coordinates in meters (dx: East, dy: North)
+            float dx = deltaPix.x * u_meters_per_pixel;
+            float dy = -deltaPix.y * u_meters_per_pixel;
+            vec2 rMeters = vec2(dx, dy);
 
             // Project along transport vector and crosswind
-            float downwind = dot(delta, windDir);
-            float crosswind = abs(dot(delta, windPerp));
+            float downwind = dot(rMeters, wDir);
+            float crosswind = abs(dot(rMeters, wPerp));
 
-            // Subtle downwind stretching, compressed upwind
-            float sigmaDown = (downwind >= 0.0) 
-              ? baseRadius * (1.0 + 0.35 * clamp(u_wind_speed, 0.1, 1.2)) 
-              : baseRadius * 0.85;
-            float sigmaCross = baseRadius * 0.85;
+            float sDown = (downwind >= 0.0) ? sigmaDownMeters : sigmaUpMeters;
+            float sCross = sigmaCrossMeters;
 
             // Mahalanobis distance squared
-            float q = (downwind * downwind) / (2.0 * sigmaDown * sigmaDown) + 
-                      (crosswind * crosswind) / (2.0 * sigmaCross * sigmaCross);
+            float q = (downwind * downwind) / (2.0 * sDown * sDown) +
+                      (crosswind * crosswind) / (2.0 * sCross * sCross);
 
-            // Local cutoff: beyond 5.5 (~3.3 sigma), contribution drops to strictly zero
-            if (q < 5.5) {
-              float kernel = exp(-q) * smoothstep(5.5, 3.8, q);
-              float normVal = clamp(pmVal / 320.0, 0.0, 1.2);
+            // Strict cutoff at ~3 sigma: beyond 4.5, contribution is zero
+            if (q < 4.5) {
+              float kernel = exp(-q) * smoothstep(4.5, 2.6, q);
+              float C_i = basePm * kernel;
 
-              float contrib = kernel * normVal;
-              totalIntensity += contrib;
-              weightedColor += getScientificPollutionColor(normVal) * contrib;
-              totalWeight += contrib;
-              maxCoreVal = max(maxCoreVal, contrib);
+              maxConcentration = max(maxConcentration, C_i);
+              sumConcentration += C_i;
             }
           }
 
-          // If no hotspot influences this pixel, keep basemap completely dark & transparent
-          if (totalWeight < 0.003) {
+          // Combined concentration: preserves peak hotspot cores without runaway summation
+          float localPM = maxConcentration + 0.25 * (sumConcentration - maxConcentration);
+
+          // Fast rejection: clean areas are completely transparent black
+          if (localPM < 25.0) {
             gl_FragColor = vec4(0.0);
             return;
           }
 
-          vec3 finalColor = weightedColor / totalWeight;
+          vec4 col = evaluatePollutionColorAndAlpha(localPM);
 
-          // Core vibrancy enhancement for extreme hotspots
-          if (maxCoreVal > 0.4) {
-            vec3 coreColor = getScientificPollutionColor(clamp(maxCoreVal * 1.15, 0.0, 1.1));
-            finalColor = mix(finalColor, coreColor, 0.35);
-          }
+          // Subtle physical micro-vorticity at plume boundaries
+          float microEdge = 0.96 + 0.04 * sin(fragPix.x * 0.05 + u_time * 0.4) * cos(fragPix.y * 0.05 + u_time * 0.4);
+          col.a *= microEdge;
 
-          // Bounded alpha: avoids blowing out into opaque solid orange
-          float alpha = clamp(1.0 - exp(-2.2 * totalIntensity), 0.0, 0.78);
-          alpha *= smoothstep(0.003, 0.035, totalIntensity);
-
-          // Subtle natural atmospheric micro-vorticity
-          float microTurb = 0.95 + 0.05 * sin(fragUV.x * 50.0 + u_time * 0.35) * cos(fragUV.y * 50.0 + u_time * 0.35);
-          alpha *= microTurb;
-
-          gl_FragColor = vec4(finalColor, alpha);
+          gl_FragColor = col;
 
         } else {
           // =========================================================================
           // MODE B: CONTINUOUS CONCENTRATION FIELD
-          // Smooth regional gradient showing broad regional transport patterns
+          // Broader regional concentration field showing metropolitan transport patterns
           // =========================================================================
 
           float fieldWeightedPM = 0.0;
           float fieldTotalWeight = 0.0;
-          float fieldDensity = 0.0;
-          float fieldSigma = 0.075 * geoScale;
+          float sigmaRegional = clamp(9000.0, 40.0 * u_meters_per_pixel, 600.0 * u_meters_per_pixel);
 
           for (int i = 0; i < 16; i++) {
             if (i >= u_num_hotspots) break;
 
-            vec2 hPos = u_hotspot_screen_positions[i];
-            float pmVal = u_hotspot_intensities[i] * diurnalMod;
+            vec2 hPix = vec2(
+              u_hotspot_screen_positions[i].x * u_resolution.x,
+              (1.0 - u_hotspot_screen_positions[i].y) * u_resolution.y
+            );
+            float basePm = u_hotspot_intensities[i] * diurnalMod;
 
-            vec2 delta = fragUV - hPos;
-            delta.x *= aspect;
+            vec2 deltaPix = fragPix - hPix;
+            float dx = deltaPix.x * u_meters_per_pixel;
+            float dy = -deltaPix.y * u_meters_per_pixel;
+            vec2 rMeters = vec2(dx, dy);
 
-            float distSq = dot(delta, delta);
-            float w = exp(-distSq / (2.0 * fieldSigma * fieldSigma));
+            float distSq = dot(rMeters, rMeters);
+            float q = distSq / (2.0 * sigmaRegional * sigmaRegional);
 
-            fieldWeightedPM += pmVal * w;
-            fieldTotalWeight += w;
-            fieldDensity += (pmVal / 320.0) * w;
+            if (q < 5.0) {
+              float w = exp(-q);
+              fieldWeightedPM += basePm * w;
+              fieldTotalWeight += w;
+            }
           }
 
-          if (fieldTotalWeight < 0.002) {
+          if (fieldTotalWeight < 0.01) {
             gl_FragColor = vec4(0.0);
             return;
           }
 
-          float localPM = fieldWeightedPM / fieldTotalWeight;
-          float pmNorm = clamp(localPM / 320.0, 0.0, 1.2);
-          vec3 fieldColor = getScientificPollutionColor(pmNorm);
+          float regionalPM = fieldWeightedPM / fieldTotalWeight;
+          if (regionalPM < 25.0) {
+            gl_FragColor = vec4(0.0);
+            return;
+          }
 
-          float alpha = clamp(1.0 - exp(-1.4 * fieldDensity), 0.0, 0.65);
-          alpha *= smoothstep(0.02, 0.12, fieldDensity);
+          vec4 col = evaluatePollutionColorAndAlpha(regionalPM);
+          col.a = min(col.a, 0.45); // Restrained regional alpha keeps basemap dark and readable
 
-          gl_FragColor = vec4(fieldColor, alpha);
+          gl_FragColor = col;
         }
       }
     `;
@@ -915,7 +958,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           className="panel-dark"
           style={{
             position: 'absolute',
-            top: '70px',
+            bottom: '185px',
             left: '20px',
             width: '270px',
             padding: '12px 14px',

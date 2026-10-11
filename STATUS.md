@@ -1,62 +1,40 @@
 # PranVayu Status
 
-Updated: 2026-10-11T20:05:00+05:30
-Phase: Complete Geospatial Air Intelligence Dashboard Redesign & Polish
+Updated: 2026-10-11T20:15:00+05:30
+Phase: Individual Pollution Hotspot Rendering Engine & Obsidian Geospatial Intelligence Redesign
 
 ## Done
-- **Centralized Design System Tokens (`web/src/index.css`)**:
-  - Semantic palette tokens: `--background: #080B0F`, `--map-background: #0A0E12`, `--surface: #0E1319`, `--surface-elevated: #121821`, `--surface-hover: #18212B`, `--border: #27313D`, `--border-subtle: #1B2530`.
-  - Contrast-tested text hierarchy: `--text-primary: #F3F5F7`, `--text-secondary: #A1ACB8`, `--text-muted: #6E7B89`.
-  - Restrained interface cyan accent: `--accent: #27D3E2` (`--accent-muted: rgba(39, 211, 226, 0.12)`, `--accent-border: rgba(39, 211, 226, 0.35)`).
-  - Scientific PM2.5 & Pollution Palette:
-    - 0-60 µg/m³: `--pollution-low: #E7C86F` (Good / Satisfactory)
-    - 61-120 µg/m³: `--pollution-moderate: #E9A45C` (Moderate)
-    - 121-180 µg/m³: `--pollution-high: #E87849` (Poor)
-    - 181-250 µg/m³: `--pollution-very-high: #E9564E` (Very Poor)
-    - 250+ µg/m³: `--pollution-extreme: #A83B45` (Severe / Hazardous)
-  - Obsidian & charcoal black OpenStreetMap dark cartographic filter with enhanced contrast (2.8) and reduced saturation (0.18).
+- **Pure Obsidian & Charcoal Basemap (`web/src/index.css`)**:
+  - Replaced hue-shifted inverted filter with pure 100% desaturated, inverted, high-contrast filter: `filter: grayscale(100%) invert(100%) contrast(1.7) brightness(0.5)`.
+  - Zero brown, zero orange, zero green mud across the entire basemap; deep charcoal background (`#0A0E12`), crisp grey roads, and deep obsidian waterways (Yamuna).
+  - Restrained interface color discipline: only interface cyan (`#27D3E2`) and neutral greys; warm scientific colors strictly reserved for localized pollution cores and data severity badges.
 
-- **Fixed 64px Top Navigation Bar (`web/src/components/Header.tsx`)**:
-  - Compact PranVayu SVG logo, product title "PranVayu", and subtitle "Delhi NCR Air Intelligence".
-  - Clean page switcher tabs: "Overview" and "How it works".
-  - Region selector dropdown ("Delhi NCR" and 12 monitored localities).
-  - Segmented pill control: "Today" / "Tomorrow".
-  - Bilingual language switcher: "EN" / "हिन्दी".
+- **Physically Grounded Individual Hotspot Dispersion Engine (`web/src/components/DelhiFluidMap.tsx`)**:
+  - Replaced single continuous diffuse smoke shader with individual, localized Gaussian dispersion plumes.
+  - Calculated exact Euclidean ground distances in meters ($dx, dy$) using Web Mercator meters-per-pixel at Delhi latitude (`28.61° N`).
+  - Spatial core radius $\sigma_0 = 2200.0$ meters clamped in screen pixels, ensuring stable geographic ground footprint across zoom levels.
+  - Physics-informed anisotropic transport: downwind plume elongation along meteorological transport vector with sharp upstream cutoff ($0.60 \times \sigma$) and crosswind boundary ($0.80 \times \sigma$).
+  - Strict cutoff at $q < 4.5$ ($3\sigma$): contribution drops smoothly to zero beyond the hotspot boundary.
+  - Local concentration aggregation: $C_{\text{local}} = C_{\text{max}} + 0.25 \times (C_{\text{sum}} - C_{\text{max}})$, preventing runaway cumulative alpha from merging nearby hotspots into an opaque blob.
+  - Direct concentration-to-color mapping:
+    - $< 25$ µg/m³: Clean air $\to$ 100% transparent black basemap (zero color overlay).
+    - $25 - 60$ µg/m³: Faint translucent yellow (`#E7C86F`, alpha 0.02–0.14).
+    - $60 - 120$ µg/m³: Gentle warm amber (`#E9A45C`, alpha 0.14–0.30).
+    - $120 - 180$ µg/m³: Distinct warm orange (`#E87849`, alpha 0.30–0.48).
+    - $180 - 260$ µg/m³: Rich crimson (`#E9564E`, alpha 0.48–0.64).
+    - $> 260$ µg/m³: Intense severe maroon core (`#A83B45`, alpha 0.64–0.76).
+  - Mode B (Continuous Field) provides broader regional dispersion ($\sigma = 9$ km) with bounded alpha (0.45).
 
-- **Two-Column Geospatial Intelligence Layout (`web/src/routes/HomeRoute.tsx`)**:
-  - Full-height desktop workspace (`calc(100vh - 64px)`) with zero outer page scrollbars.
-  - Dominant Map Workspace occupying ~74% width.
-  - Dedicated Right Intelligence Sidebar occupying 380px fixed width with independent vertical scrolling.
-  - Bidirectional synchronization between map hotspot markers and locality selection state.
+- **Geographically Anchored Station Markers & Layout Collision Resolution**:
+  - Fixed marker placement with `position: absolute` and sub-pixel coordinates; each station marker (`Bawana`, `Punjabi Bagh`, `Anand Vihar`, `Dwarka`, `Okhla`) sits directly atop its physical hotspot core.
+  - Zoom-dependent detail levels: Regional view (< 11), City view (11–13), and Neighborhood view (>= 13).
+  - Stacked selected station detail popup directly above the bottom-left advisory card (`bottom: 185px, left: 20px`), keeping the top-left layer and mode controls completely unobstructed.
 
-- **Right Intelligence Sidebar with 5 Connected Cards (`web/src/components/IntelligenceSidebar.tsx`)**:
-  1. *Current Air Quality Card*: Prominent PM2.5 reading in µg/m³, scientific severity badge, relative trend change (+4.2%), and 24-hour SVG sparkline.
-  2. *Hotspot Forecast Card*: Ranked table of monitored locations (Anand Vihar, Wazirpur, Bawana, Jahangirpuri, Punjabi Bagh, ITO, Okhla, Rohini, RK Puram, Dwarka, Siri Fort, Mandir Marg) with forecast PM2.5, severity pills, and click-to-focus map interaction.
-  3. *Wind and Pollutant Transport Card*: Meteorological wind speed (km/h) and origin (e.g. WNW · 315°), visual 2-needle compass diagram showing origin and transport vector, and derived physical transport interpretation.
-  4. *Model Confidence Card*: Confidence tier (High / Moderate), uncertainty margin (±14 µg/m³), and honest provenance labels (CAMS ECMWF + OpenAQ surface stations + FIRMS VIIRS).
-  5. *PM2.5 Forecast Chart*: Interactive 48-hour time series chart with $p_{10}$–$p_{90}$ uncertainty envelope, median line, vertical timeline cursor, and click-to-seek scrubbing.
-
-- **Interactive Geospatial Visualization Engine (`web/src/components/DelhiFluidMap.tsx`)**:
-  - Real, interactive Leaflet base map with OpenStreetMap tiles (pan, zoom, pinch, double-click).
-  - Three.js WebGL shader with physics-informed Gaussian plume dispersion, Pasquill-Gifford lateral spread, Kelvin-Helmholtz shear vorticity, Beer-Lambert optical extinction, and scientific color stops.
-  - Sub-pixel coordinate synchronization via `map.latLngToContainerPoint([lat, lon])` on Leaflet `move`, `zoom`, and `resize` events.
-  - Mode toggle: Individual Hotspot core plumes vs. Continuous regional concentration field.
-  - Dynamic hotspot popups showing time-scrubbed forecast PM2.5, category badge, coordinates, and monitoring metadata.
-  - Geographically anchored hotspot markers styled as dark technical pills (`[dot] Anand Vihar [318]`) with detail popups.
-  - Toggleable 2D wind streamline particles flowing smoothly along the meteorologically inverted transport vector.
-  - Floating Map Controls:
-    - *Top-Left*: Layer visibility menu (Pollution Layer, Wind Streamlines, Station Markers), Mode toggle (Hotspots vs Continuous), and Quick Wind toggle.
-    - *Top-Right*: Reset Delhi NCR bounds and Zoom (+/-) buttons.
-    - *Bottom-Left*: Floating Air Quality Advisory card with situation summary, actionable school advice, and confidence.
-    - *Bottom-Center*: Floating Forecast Timeline Scrubber with Play/Pause button, slider, and horizon markers (`Now`, `+1h`, `+3h`, `+6h`, `+12h`, `+24h`).
-    - *Bottom-Right*: Floating PM2.5 scientific color legend with tick marks (0, 60, 120, 180, 250, 350+ µg/m³).
-
-- **Tooling & Verification**:
-  - `make test` (10/10 pytest unit tests passing).
-  - `make lint` (ruff and TypeScript build passing with 0 errors).
-  - `make run-local` (pipeline executed and 12 mock payloads generated & validated).
-  - `make evaluate` (replay evaluation executed cleanly).
-  - Frontend production build compiles cleanly (`npm run build`).
+- **Verification & Visual Inspection**:
+  - Captured headless Chrome screenshot at 1536x864 and visually inspected: distinct isolated hotspot cores, zero brown/muddy cast, readable basemap roads, and synchronized HUD.
+  - `make test`: 10/10 pytest unit tests passing.
+  - `make lint`: Ruff and TypeScript build passing with 0 errors.
+  - Vite dev server running and tested on port 3001.
 
 ## Next
-- Deliver completed work to user.
+- Deliver completed overhaul to user.
