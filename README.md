@@ -168,14 +168,16 @@ PranVayu is fully testable and runnable locally with zero external network depen
    ```sh
    python3 -m venv .venv
    source .venv/bin/activate
-   pip install -r backend/requirements.txt
+   python -m pip install numpy pydantic PyYAML pytest ruff
    ```
+
+On Windows PowerShell, activate the environment with `.venv\Scripts\Activate.ps1`. Run the remaining `make` commands from the repository root with the environment active. Installing dependencies requires internet access; fixture-based tests do not require AWS credentials or live data API keys.
 
 3. Install frontend web dependencies:
 
    ```sh
    cd web
-   npm install
+   npm ci
    cd ..
    ```
 
@@ -203,7 +205,9 @@ PranVayu is fully testable and runnable locally with zero external network depen
    cd web && npm run dev
    ```
 
-8. Open [http://localhost:5173](http://localhost:5173) in your browser.
+8. Open [http://localhost:3000](http://localhost:3000) in your browser. If that port is occupied, use the URL printed by Vite.
+
+To preview the production build, run `npm run build --prefix web` followed by `npm run preview --prefix web`. The preview server defaults to [http://localhost:4173](http://localhost:4173).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -226,7 +230,7 @@ The main dashboard provides an obsidian/charcoal air intelligence workspace:
 Navigate to the technical explainer via the top navigation bar or direct URL:
 
 ```sh
-http://localhost:5173/?page=method
+http://localhost:3000/?page=method
 ```
 
 The explainer provides a single-page, compact, animated 30-second technical breakdown of the physics-informed pipeline:
@@ -239,10 +243,10 @@ The explainer provides a single-page, compact, animated 30-second technical brea
 
 Toggle atmospheric scenarios via URL parameters:
 
-* `http://localhost:5173/?state=stale`: Simulates stale monitoring station feed with fallback warning banner.
-* `http://localhost:5173/?state=partial`: Simulates missing wind vectors with calm wind fallback.
-* `http://localhost:5173/?state=down`: Simulates upstream API disruption with offline cached state.
-* `http://localhost:5173/?state=replay`: Simulates pre-registered historical stubble smoke event replay.
+* `http://localhost:3000/?state=stale`: Simulates stale monitoring station feed with fallback warning banner.
+* `http://localhost:3000/?state=partial`: Simulates missing wind vectors with calm wind fallback.
+* `http://localhost:3000/?state=down`: Simulates upstream API disruption with offline cached state.
+* `http://localhost:3000/?state=replay`: Simulates pre-registered historical stubble smoke event replay.
 
 ### Commands
 
@@ -253,7 +257,7 @@ Toggle atmospheric scenarios via URL parameters:
 | `make run-local` | Run local pipeline on offline fixtures to generate mock payloads |
 | `make evaluate` | Execute historical replay evaluation suite against M1–M5 metrics |
 | `make web-build` | Compile optimized production web client (`< 30 kB` gzipped CSS) |
-| `make deploy` | Deploy serverless infrastructure to AWS SAM (`ap-south-1`) |
+| `make web-dev` | Start the Vite development server (default port 3000) |
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
