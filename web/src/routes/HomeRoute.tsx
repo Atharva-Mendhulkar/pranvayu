@@ -6,6 +6,7 @@ import { IntelligenceSidebar } from '../components/IntelligenceSidebar';
 import { generateDeterministicHeadline, ClientRulesConfig } from '../lib/rules';
 import { SCHOOLS } from '../data/schools';
 import { MONITORING_STATIONS } from '../data/stations';
+import { InspectedLocation } from '../lib/continuousField';
 
 interface HomeRouteProps {
   payload: ForecastPayload;
@@ -44,6 +45,7 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
   const [selectedHotspotId, setSelectedHotspotId] = useState<string>(payload.locality.id || 'anand_vihar');
   const [selectedStationId, setSelectedStationId] = useState<string>(payload.locality.id || 'anand_vihar');
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>('');
+  const [inspectedLocation, setInspectedLocation] = useState<InspectedLocation | null>(null);
 
   // Synchronized forecast time offset across Map, Sidebar, Chart, Timeline
   const [hourOffset, setHourOffset] = useState<number>(0);
@@ -79,17 +81,20 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
   const handleSelectHotspot = (id: string) => {
     setSelectedHotspotId(id);
     setSelectedStationId(id);
+    setInspectedLocation(null);
     onSelectLocality(id);
   };
 
   const handleSelectStation = (id: string) => {
     setSelectedStationId(id);
     setSelectedHotspotId(id);
+    setInspectedLocation(null);
     onSelectLocality(id);
   };
 
   const handleSelectSchool = (id: string) => {
     setSelectedSchoolId(id);
+    setInspectedLocation(null);
     const foundSchool = SCHOOLS.find((s) => s.id === id);
     if (foundSchool && foundSchool.locality_id) {
       setSelectedStationId(foundSchool.nearest_station_id);
@@ -131,6 +136,8 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
           selectedSchoolId={selectedSchoolId}
           onSelectSchool={handleSelectSchool}
           onSelectLocality={onSelectLocality}
+          inspectedLocation={inspectedLocation}
+          onInspectLocation={setInspectedLocation}
           hourOffset={hourOffset}
           onSeekHourOffset={setHourOffset}
           isPlaying={isPlaying}
@@ -152,6 +159,8 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
         onSelectStation={handleSelectStation}
         selectedSchoolId={selectedSchoolId}
         onSelectSchool={handleSelectSchool}
+        inspectedLocation={inspectedLocation}
+        onInspectLocation={setInspectedLocation}
         hourOffset={hourOffset}
         onSeekHourOffset={setHourOffset}
         windSpeedKmh={windSpeedKmh}

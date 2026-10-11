@@ -4,6 +4,7 @@ import { Language } from '../lib/i18n';
 import { HotspotData } from './DelhiFluidMap';
 import { MonitoringStation, School, SchoolPeriodVerdict } from '../types/intelligence';
 import { WindIcon, SchoolIcon, StationIcon, ActivityIcon, ClockIcon } from './Icons';
+import { InspectedLocation, getPaletteTier } from '../lib/continuousField';
 
 interface IntelligenceSidebarProps {
   payload: ForecastPayload;
@@ -14,6 +15,8 @@ interface IntelligenceSidebarProps {
   onSelectStation?: (id: string) => void;
   selectedSchoolId?: string;
   onSelectSchool?: (id: string) => void;
+  inspectedLocation?: InspectedLocation | null;
+  onInspectLocation?: (loc: InspectedLocation | null) => void;
   hourOffset: number;
   onSeekHourOffset: (offset: number) => void;
   windSpeedKmh: number;
@@ -33,6 +36,8 @@ export const IntelligenceSidebar: React.FC<IntelligenceSidebarProps> = ({
   onSelectStation,
   selectedSchoolId,
   onSelectSchool,
+  inspectedLocation,
+  onInspectLocation,
   hourOffset,
   onSeekHourOffset,
   windSpeedKmh,
@@ -58,14 +63,15 @@ export const IntelligenceSidebar: React.FC<IntelligenceSidebarProps> = ({
     return basePm;
   };
 
-  // Helper: Severity categorization
+  // Helper: Severity categorization (7-tier standard)
   const getCategoryClass = (val: number) => {
-    if (val <= 30) return { label: 'Good', badge: 'badge-low', color: '#E7C86F' };
-    if (val <= 60) return { label: 'Satisfactory', badge: 'badge-moderate', color: '#E9A45C' };
-    if (val <= 90) return { label: 'Moderate', badge: 'badge-moderate', color: '#E9A45C' };
-    if (val <= 120) return { label: 'Poor', badge: 'badge-poor', color: '#E87849' };
-    if (val <= 250) return { label: 'Very Poor', badge: 'badge-very-poor', color: '#E9564E' };
-    return { label: 'Severe', badge: 'badge-severe', color: '#A83B45' };
+    const tier = getPaletteTier(val);
+    return {
+      label: tier.label_en,
+      label_hi: tier.label_hi,
+      badge: tier.badge,
+      color: tier.hex,
+    };
   };
 
   // Ranked hotspots
@@ -171,73 +177,182 @@ export const IntelligenceSidebar: React.FC<IntelligenceSidebarProps> = ({
       </div>
 
       <div className="sidebar-content-cards">
-        {/* 2. CURRENT CONDITIONS SECTION */}
-        <section className="sidebar-section" aria-label="Current Air Quality">
-          <div className="sidebar-section-header">
-            <span className="sidebar-section-title">
-              Current Conditions · {activeHotspot.name_en}
-            </span>
-            <span className={`severity-badge ${category.badge}`}>{category.label}</span>
-          </div>
+        {/* 2. INSPECTED LOCATION OR CURRENT CONDITIONS */}
+        {inspectedLocation ? (
+          <section className="sidebar-section" aria-label="Inspected Spatial Estimate" style={{ borderLeft: '3px solid var(--accent-cyan)' }}>
+            <div className="sidebar-section-header">
+              <span className="sidebar-section-title" style={{ color: 'var(--accent-cyan)' }}>
+                Spatial Estimate · {inspectedLocation.lat.toFixed(3)}°N, {inspectedLocation.lon.toFixed(3)}°E
+              </span>
+              <span className={`severity-badge ${inspectedLocation.tier.badge}`}>
+                {lang === 'hi' ? inspectedLocation.tier.label_hi : inspectedLocation.tier.label_en}
+              </span>
+            </div>
 
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-            <span style={{ fontSize: '30px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
-              {activeHotspotVal}
-            </span>
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>
-              µg/m³ PM2.5
-            </span>
-            <span
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+              <span style={{ fontSize: '30px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
+                {inspectedLocation.estimatedPm25}
+              </span>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                µg/m³ PM2.5
+              </span>
+              <span
+                style={{
+                  marginLeft: 'auto',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: 'var(--accent-cyan)',
+                }}
+              >
+                ±{inspectedLocation.uncertaintySpread} µg/m³ σ
+              </span>
+            </div>
+
+            {/* Provenance and Distance to Observation Anchor */}
+            <div
               style={{
-                marginLeft: 'auto',
-                fontSize: '11px',
-                fontWeight: 600,
-                color: 'var(--pollution-very-high)',
+                fontSize: '10.5px',
+                padding: '6px 8px',
+                borderRadius: '3px',
+                background: 'var(--bg-surface-elevated)',
+                border: '1px solid var(--border-subtle)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
               }}
             >
-              AQI ~{Math.min(500, Math.round(activeHotspotVal * 1.35))}
-            </span>
-          </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Data Provenance:</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {inspectedLocation.provenanceLabel_en}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Nearest Physical Sensor:</span>
+                <span style={{ color: 'var(--text-secondary)' }}>
+                  {inspectedLocation.nearestStation.name_en} ({inspectedLocation.nearestStation.distanceKm} km)
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Sensor Observation:</span>
+                <span style={{ color: 'var(--text-secondary)' }}>
+                  {inspectedLocation.nearestStation.observedPm25} µg/m³ ({inspectedLocation.nearestStation.agency} verified)
+                </span>
+              </div>
+            </div>
 
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}>
-            <span>Nearest Sensor: {activeStation.name_en}</span>
-            <span>Freshness: 14m ago</span>
-          </div>
+            {/* Component Decomposition */}
+            <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '3px', borderTop: '1px solid var(--border-subtle)', paddingTop: '5px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Regional Background:</span>
+                <span style={{ color: 'var(--text-secondary)' }}>{inspectedLocation.components.background} µg/m³</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>NW Biomass Advection:</span>
+                <span style={{ color: 'var(--text-secondary)' }}>{inspectedLocation.components.smokeAdvection} µg/m³</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Urban Core Dispersion:</span>
+                <span style={{ color: 'var(--text-secondary)' }}>{inspectedLocation.components.urbanDispersion} µg/m³</span>
+              </div>
+            </div>
 
-          {/* Mini 24h Trend */}
-          <div style={{ width: '100%', height: '28px', position: 'relative', marginTop: '2px' }}>
-            <svg width="100%" height="28" viewBox="0 0 240 28" preserveAspectRatio="none">
-              {series.length > 1 && (
-                <>
-                  <defs>
-                    <linearGradient id="sparkGrad2" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#27D3E2" stopOpacity="0.25" />
-                      <stop offset="100%" stopColor="#27D3E2" stopOpacity="0.0" />
-                    </linearGradient>
-                  </defs>
-                  {(() => {
-                    const maxP = Math.max(...series.slice(0, 24).map((s) => s.p50), 350);
-                    const minP = Math.min(...series.slice(0, 24).map((s) => s.p50), 50);
-                    const range = Math.max(maxP - minP, 1);
-                    const points = series.slice(0, 24).map((s, i) => {
-                      const x = (i / 23) * 240;
-                      const y = 26 - ((s.p50 - minP) / range) * 24;
-                      return `${x.toFixed(1)},${y.toFixed(1)}`;
-                    });
-                    const dLine = `M ${points.join(' L ')}`;
-                    const dArea = `${dLine} L 240,28 L 0,28 Z`;
-                    return (
-                      <>
-                        <path d={dArea} fill="url(#sparkGrad2)" />
-                        <path d={dLine} fill="none" stroke="#27D3E2" strokeWidth="1.5" />
-                      </>
-                    );
-                  })()}
-                </>
-              )}
-            </svg>
-          </div>
-        </section>
+            <div style={{ display: 'flex', gap: '6px', marginTop: '2px' }}>
+              <button
+                type="button"
+                className="segmented-pill-btn active"
+                style={{ flex: 1, padding: '4px 6px', fontSize: '10.5px', textAlign: 'center' }}
+                onClick={() => {
+                  if (onSelectStation) onSelectStation(inspectedLocation.nearestStation.id);
+                  onSelectHotspot(inspectedLocation.nearestStation.id);
+                }}
+              >
+                Focus Station ({inspectedLocation.nearestStation.agency})
+              </button>
+              <button
+                type="button"
+                className="segmented-pill-btn"
+                style={{ padding: '4px 8px', fontSize: '10.5px' }}
+                onClick={() => {
+                  if (onInspectLocation) onInspectLocation(null);
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          </section>
+        ) : (
+          <section className="sidebar-section" aria-label="Current Air Quality">
+            <div className="sidebar-section-header">
+              <span className="sidebar-section-title">
+                Current Conditions · {activeHotspot.name_en}
+              </span>
+              <span className={`severity-badge ${category.badge}`}>{category.label}</span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+              <span style={{ fontSize: '30px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
+                {activeHotspotVal}
+              </span>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                µg/m³ PM2.5
+              </span>
+              <span
+                style={{
+                  marginLeft: 'auto',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: 'var(--pollution-very-high)',
+                }}
+              >
+                AQI ~{Math.min(500, Math.round(activeHotspotVal * 1.35))}
+              </span>
+            </div>
+
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}>
+              <span>Nearest Sensor: {activeStation.name_en}</span>
+              <span>Freshness: 14m ago</span>
+            </div>
+
+            {/* Mini 24h Trend */}
+            <div style={{ width: '100%', height: '28px', position: 'relative', marginTop: '2px' }}>
+              <svg width="100%" height="28" viewBox="0 0 240 28" preserveAspectRatio="none">
+                {series.length > 1 && (
+                  <>
+                    <defs>
+                      <linearGradient id="sparkGrad2" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#27D3E2" stopOpacity="0.25" />
+                        <stop offset="100%" stopColor="#27D3E2" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+                    {(() => {
+                      const maxP = Math.max(...series.slice(0, 24).map((s) => s.p50), 350);
+                      const minP = Math.min(...series.slice(0, 24).map((s) => s.p50), 50);
+                      const range = Math.max(maxP - minP, 1);
+                      const points = series.slice(0, 24).map((s, i) => {
+                        const x = (i / 23) * 240;
+                        const y = 26 - ((s.p50 - minP) / range) * 24;
+                        return `${x.toFixed(1)},${y.toFixed(1)}`;
+                      });
+                      const dLine = `M ${points.join(' L ')}`;
+                      const dArea = `${dLine} L 240,28 L 0,28 Z`;
+                      return (
+                        <>
+                          <path d={dArea} fill="url(#sparkGrad2)" />
+                          <path d={dLine} fill="none" stroke="#27D3E2" strokeWidth="1.5" />
+                        </>
+                      );
+                    })()}
+                  </>
+                )}
+              </svg>
+            </div>
+
+            <div style={{ fontSize: '10px', color: 'var(--accent-cyan)', marginTop: '4px', fontStyle: 'italic' }}>
+              Click any coordinate on the map to inspect unmonitored air estimates.
+            </div>
+          </section>
+        )}
 
         {/* 3. INFERRED HOTSPOTS SECTION */}
         <section className="sidebar-section" aria-label="Inferred Hotspots">

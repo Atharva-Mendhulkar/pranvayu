@@ -161,4 +161,35 @@
   - Verified with `make test` (17/17 pytest tests passing offline) and `make lint` (ruff check + tsc + vite build 0 errors).
   - Captured and inspected visual evidence at Regional zoom ($z=10$), City zoom ($z=12$), and Neighborhood zoom ($z=14$).
 
+### 2026-10-11 22:00 IST — Physics-Informed Continuous Air Quality Field & Coordinate Inspection Overhaul
+- **Problem Diagnosed**:
+  - The previous UI rendered pollution only around discrete monitoring stations and hotspot clusters. Outer Delhi NCR sectors appeared as black, transparent voids.
+  - This fundamentally compromised PranVayu's key research thesis: providing continuous physics-informed spatial estimation across unmonitored locations using atmospheric advection and dispersion modeling. Unmonitored coordinates looked missing rather than estimated.
+- **Physics-Informed Basin-Wide Continuous Field**:
+  - Formulated continuous spatial model in `backend/pv/model/spatial_field.py` and synced TypeScript engine in `web/src/lib/continuousField.ts`.
+  - Spans entire Delhi NCR domain ($28.25^\circ\text{N} - 28.95^\circ\text{N}$, $76.75^\circ\text{E} - 77.60^\circ\text{E}$).
+  - Synthesizes 3 physical components:
+    1. Regional Background Ventilation: $C_{\text{bg}}(\text{lat}, \text{lon}) \approx 26 - 40\,\mu\text{g/m}^3$.
+    2. Upstream Stubble Smoke Corridor: NW agricultural biomass advection tongue traversing towards southeast.
+    3. Urban Plume Cores & Dispersion Halos: Localized emission clusters around industrial and transport hubs.
+  - Upgraded WebGL fragment shader with Mercator UV geographic coordinate recovery using `u_map_bounds`, smooth domain boundary falloff, and continuous spatial field evaluation.
+- **Green Means Clean Air**:
+  - Implemented 7-tier scientific palette (`PALETTE_TIERS`).
+  - Mapped clean air ($\le 30\,\mu\text{g/m}^3$) to Deep Forest Emerald (`#18382E`, alpha 0.28) and $30-60\,\mu\text{g/m}^3$ to Muted Green (`#2F7656`, alpha 0.34).
+  - Clean outer sectors (Rohtak, Jhajjar, Sonipat, Meerut) render in visible muted green tones, proving clean air rather than absent data.
+  - Alpha clamped strictly to $0.24 - 0.74$, ensuring road networks and basemap geometry remain crisp.
+- **Semantic Separation & Honest Provenance**:
+  - Ground monitoring stations remain distinct physical sensor nodes with OpenAQ ID, elevation, and "DPCC VERIFIED" badge.
+  - Unmonitored coordinates are explicitly labeled "PHYSICS-INFORMED SPATIAL ESTIMATE".
+  - Modeled spatial uncertainty scaling: $\sigma(d) = 12.0 + 1.8 \times \min(d_{\text{sensor}}, 25.0)\,\mu\text{g/m}^3$, honestly reporting expanding error bounds with distance from physical ground monitors.
+- **Interactive Coordinate Inspection**:
+  - Added click listener on Leaflet map evaluating coordinates on the fly.
+  - Renders pulsing cyan inspection reticle (`.inspector-reticle`) on map canvas.
+  - Displays on-map HUD card (`POPUP 0`) and synchronizes with Section 2 of `IntelligenceSidebar`: displays exact coordinates, estimated PM2.5, $\pm \sigma$ spread, outdoor guidance, nearest physical monitor distance ($d_{\text{sensor}}$ km), and 3-component model decomposition.
+- **Verification & Quality Gates**:
+  - Added `backend/tests/test_continuous_field.py` (6 unit tests); 23/23 pytest tests passing offline (`make test`).
+  - Production build verified: `make lint` clean (ruff 0 warnings, tsc 0 errors, CSS bundle 28.73 kB / 9.38 kB gzipped, well within 30 kB budget).
+  - High-resolution headless Chrome screenshot captured and inspected, confirming continuous emerald green field across outer sectors, distinct warm hotspot cores, and crisp road legibility.
+
+
 

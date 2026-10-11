@@ -672,34 +672,90 @@ button {
   letter-spacing: 0.3px;
 }
 
+.badge-very-low {
+  background: rgba(24, 56, 46, 0.35);
+  color: #4EBA89;
+  border: 1px solid rgba(47, 118, 86, 0.6);
+}
+
 .badge-low {
-  background: rgba(231, 200, 111, 0.12);
-  color: var(--pollution-low);
-  border: 1px solid rgba(231, 200, 111, 0.35);
+  background: rgba(47, 118, 86, 0.25);
+  color: #5BC598;
+  border: 1px solid rgba(47, 118, 86, 0.45);
 }
 
 .badge-moderate {
-  background: rgba(233, 164, 92, 0.12);
-  color: var(--pollution-moderate);
-  border: 1px solid rgba(233, 164, 92, 0.35);
+  background: rgba(154, 171, 85, 0.20);
+  color: #B5C768;
+  border: 1px solid rgba(154, 171, 85, 0.45);
 }
 
-.badge-poor {
-  background: rgba(232, 120, 73, 0.12);
-  color: var(--pollution-high);
-  border: 1px solid rgba(232, 120, 73, 0.35);
+.badge-elevated {
+  background: rgba(210, 163, 77, 0.20);
+  color: #E5B863;
+  border: 1px solid rgba(210, 163, 77, 0.45);
 }
 
-.badge-very-poor {
-  background: rgba(233, 86, 78, 0.14);
-  color: var(--pollution-very-high);
-  border: 1px solid rgba(233, 86, 78, 0.4);
+.badge-poor,
+.badge-high {
+  background: rgba(231, 122, 67, 0.20);
+  color: #F08E58;
+  border: 1px solid rgba(231, 122, 67, 0.45);
 }
 
-.badge-severe {
-  background: rgba(168, 59, 69, 0.18);
-  color: #E65A68;
-  border: 1px solid rgba(168, 59, 69, 0.5);
+.badge-very-poor,
+.badge-very-high {
+  background: rgba(217, 78, 73, 0.20);
+  color: #E6635F;
+  border: 1px solid rgba(217, 78, 73, 0.45);
+}
+
+.badge-severe,
+.badge-extreme {
+  background: rgba(132, 47, 67, 0.25);
+  color: #B2455F;
+  border: 1px solid rgba(132, 47, 67, 0.55);
+}
+
+/* Inspected Location Crosshair Reticle */
+.inspector-reticle {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.inspector-reticle-pulse {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent-cyan);
+  animation: reticlePulse 2s infinite ease-out;
+}
+
+.inspector-reticle-center {
+  width: 6px;
+  height: 6px;
+  background: var(--accent-cyan);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--accent-cyan);
+}
+
+@keyframes reticlePulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
 }
 
 /* Custom Scrollbars */

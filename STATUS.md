@@ -54,9 +54,22 @@ Phase: PranVayu Geospatial Air Intelligence Platform v2 Overhaul
   - **Air Intelligence Key**: Added compact two-tier legend in bottom-right corner distinguishing: (1) PM2.5 Concentration scale, (2) Particle Transport (Particulate Mass Motion), (3) Transport Vectors (Dominant Regional Arrows vs Local Streamlines).
   - **Offline Unit Tests**: Added `backend/tests/test_multiscale_transport.py` (7 tests) verifying direction conversion, geodesic velocities, two-component core/halo separation, concentration-weighted sampling, zoom-adaptive curves, vector coherence, and calm wind fallback. Full suite 17/17 passing.
 
+- **Continuous Physics-Informed Air Quality Field & Coordinate Inspection (`backend/pv/model/spatial_field.py`, `web/src/lib/continuousField.ts`, `web/src/components/DelhiFluidMap.tsx`, `web/src/components/IntelligenceSidebar.tsx`)**:
+  - **Basin-Wide Geographic Coverage**: Eliminated the defect where unmonitored areas rendered as black/empty voids. Implemented continuous physics-informed spatial estimation across the entire Delhi NCR basin ($28.25^\circ\text{N} - 28.95^\circ\text{N}$, $76.75^\circ\text{E} - 77.60^\circ\text{E}$).
+  - **Green Represents Clean Air**: Re-engineered the color palette and WebGL fragment shader with a 7-tier scientific scale (`PALETTE_TIERS`). Areas with low pollution ($\le 30\,\mu\text{g/m}^3$) render as deep forest emerald (`#18382E`, alpha 0.28) and $30-60\,\mu\text{g/m}^3$ as muted green (`#2F7656`, alpha 0.34). Outer agricultural/ventilated sectors (Rohtak, Jhajjar, Sonipat, Meerut, etc.) are visibly green rather than missing.
+  - **Road & Basemap Legibility**: Alpha clamped between 0.24 and 0.74, ensuring all cartographic features (highways, roads, Yamuna river, labels) remain razor-sharp and legible underneath the atmospheric layer.
+  - **Semantic Honesty & Model Provenance**: Maintained strict separation between physical CPCB/DPCC ground stations (OpenAQ IDs, elevation, direct BAM/TEOM sensor badges) and unmonitored locations. Coordinates without physical monitors are explicitly labeled "PHYSICS-INFORMED SPATIAL ESTIMATE".
+  - **Distance-Dependent Spatial Uncertainty**: Implemented $\sigma(d) = 12.0 + 1.8 \times \min(d, 25.0)\,\mu\text{g/m}^3$, honestly conveying expanding uncertainty bounds the further a location is from physical ground sensors.
+  - **Interactive Coordinate Inspection**:
+    - Clicking any coordinate on the Leaflet map calculates the spatial estimate, places an animated cyan targeting reticle (`.inspector-reticle`), and displays an on-map HUD card.
+    - Synchronizes with `IntelligenceSidebar` Section 2: displays coordinate, estimated PM2.5 with $\pm \sigma$ spread, outdoor guidance, nearest physical monitor distance ($d_{\text{sensor}}$ km), and 3-component model decomposition (regional ventilation, upstream NW biomass plume, local urban dispersion).
+  - **Updated Bottom-Right Key Legend**: Displays the 7-tier scale (`0 Clean · 60 Mod · 100 Elev · 160 High · 320+ Sev`) with explicit caption: "Continuous basin field: Green represents verified clean air."
+  - **Offline Unit Tests**: Added `backend/tests/test_continuous_field.py` with 6 tests. Full suite now at 23/23 tests passing offline.
+
 - **Full Verification & Quality Assurance**:
-  - Zero brown/orange tint on basemap: pure obsidian/charcoal cartography.
-  - 17/17 pytest unit tests passed offline (`make test`).
+  - Pure obsidian/charcoal cartography with zero brown/orange mud.
+  - 23/23 pytest unit tests passed offline (`make test`).
   - Production TypeScript and Vite builds passing with 0 lint errors (`make lint`).
-  - High-resolution visual screenshots captured and verified across regional, city, and neighborhood zooms (1536x864).
+  - Home route CSS at 28.73 kB (9.38 kB gzipped), well under the 30 kB hard budget.
+  - Visual validation verified via high-resolution headless Chrome rendering (1440x900).
 

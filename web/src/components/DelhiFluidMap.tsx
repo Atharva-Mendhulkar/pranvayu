@@ -5,6 +5,12 @@ import 'leaflet/dist/leaflet.css';
 import { Language } from '../lib/i18n';
 import { WindIcon, LayersIcon, PlayIcon, PauseIcon, RefreshIcon, SchoolIcon, ParticlesIcon } from './Icons';
 import { MonitoringStation, School, SchoolPeriodVerdict } from '../types/intelligence';
+import {
+  InspectedLocation,
+  inspectMapCoordinate,
+  evaluateContinuousField,
+  getPaletteTier,
+} from '../lib/continuousField';
 
 export interface HotspotData {
   id: string;
@@ -36,6 +42,8 @@ export interface DelhiFluidMapProps {
   selectedSchoolId?: string;
   onSelectSchool?: (id: string) => void;
   onSelectLocality?: (id: string) => void;
+  inspectedLocation?: InspectedLocation | null;
+  onInspectLocation?: (loc: InspectedLocation | null) => void;
   hourOffset: number;
   onSeekHourOffset?: (offset: number) => void;
   isPlaying?: boolean;
@@ -136,6 +144,8 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
   selectedSchoolId,
   onSelectSchool,
   onSelectLocality,
+  inspectedLocation: propsInspectedLocation,
+  onInspectLocation,
   hourOffset,
   onSeekHourOffset,
   isPlaying = false,
@@ -152,8 +162,12 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
   const particleCanvasRef = useRef<HTMLCanvasElement>(null);
   const windCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Visualization mode: Mode A: 'hotspots' (default) vs Mode B: 'continuous'
-  const [visMode, setVisMode] = useState<'hotspots' | 'continuous'>('hotspots');
+  // Visualization mode: Mode A: 'hotspots' vs Mode B: 'continuous' (Default: Continuous physics field)
+  const [visMode, setVisMode] = useState<'hotspots' | 'continuous'>('continuous');
+
+  // Arbitrary coordinate inspection state
+  const [localInspected, setLocalInspected] = useState<InspectedLocation | null>(null);
+  const [inspectedScreenPos, setInspectedScreenPos] = useState<{ sx: number; sy: number } | null>(null);
 
   // Layer visibility state (6 distinct independent layers)
   const [layers, setLayers] = useState({
@@ -196,14 +210,15 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     return Math.round(basePm * diurnalMod);
   }, []);
 
-  // Helper: Scientific palette category & color
+  // Helper: Scientific palette category & color (7-Tier standard)
   const getCategoryForPm = useCallback((pm: number) => {
-    if (pm <= 30) return { label: 'Good', color: '#E7C86F', badge: 'badge-low' };
-    if (pm <= 60) return { label: 'Satisfactory', color: '#E9A45C', badge: 'badge-moderate' };
-    if (pm <= 90) return { label: 'Moderate', color: '#E9A45C', badge: 'badge-moderate' };
-    if (pm <= 120) return { label: 'Poor', color: '#E87849', badge: 'badge-poor' };
-    if (pm <= 250) return { label: 'Very Poor', color: '#E9564E', badge: 'badge-very-poor' };
-    return { label: 'Severe', color: '#A83B45', badge: 'badge-severe' };
+    const tier = getPaletteTier(pm);
+    return {
+      label: tier.label_en,
+      label_hi: tier.label_hi,
+      color: tier.hex,
+      badge: tier.badge,
+    };
   }, []);
 
   // Synchronize Leaflet map coordinates with Three.js shader and pins
@@ -220,6 +235,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
 
     // Exact meters per pixel at Delhi latitude (28.61° N) in Web Mercator
     const metersPerPixel = (40075016.686 * Math.cos((28.61 * Math.PI) / 180)) / (256 * Math.pow(2, zoom));
+    const bounds = map.getBounds();
 
     // Hotspot positions
     const screenPositions = new Float32Array(16 * 2);
@@ -240,8 +256,23 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       threeRef.current.material.uniforms.u_map_zoom.value = zoom;
       threeRef.current.material.uniforms.u_meters_per_pixel.value = metersPerPixel;
       threeRef.current.material.uniforms.u_resolution.value.set(w, h);
+      threeRef.current.material.uniforms.u_map_bounds.value.set(
+        bounds.getSouth(),
+        bounds.getWest(),
+        bounds.getNorth(),
+        bounds.getEast()
+      );
     }
     setPinScreenCoords(coords);
+
+    // Update screen pos of inspected location if present
+    const activeInsp = propsInspectedLocation || localInspected;
+    if (activeInsp) {
+      const pt = map.latLngToContainerPoint([activeInsp.lat, activeInsp.lon]);
+      setInspectedScreenPos({ sx: pt.x, sy: pt.y });
+    } else {
+      setInspectedScreenPos(null);
+    }
 
     // Stations positions
     if (stations && stations.length > 0) {
@@ -398,6 +429,56 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     };
   }, [syncMapCoordinates, hotspots, stations, schools]);
 
+  // Synchronize externally provided inspectedLocation
+  useEffect(() => {
+    if (propsInspectedLocation !== undefined) {
+      setLocalInspected(propsInspectedLocation);
+      if (propsInspectedLocation && mapInstanceRef.current) {
+        const pt = mapInstanceRef.current.latLngToContainerPoint([
+          propsInspectedLocation.lat,
+          propsInspectedLocation.lon,
+        ]);
+        setInspectedScreenPos({ sx: pt.x, sy: pt.y });
+      } else if (!propsInspectedLocation) {
+        setInspectedScreenPos(null);
+      }
+    }
+  }, [propsInspectedLocation]);
+
+  // Interactive Map Click: Evaluate physics-informed spatial estimate anywhere in Delhi NCR
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    const handleMapClick = (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+      const inspected = inspectMapCoordinate(
+        lat,
+        lng,
+        hourOffset,
+        windSpeedKmh,
+        windDirectionDeg,
+        hotspots,
+        stations
+      );
+      setLocalInspected(inspected);
+      if (onInspectLocation) {
+        onInspectLocation(inspected);
+      }
+      setActivePin(null);
+      setActiveStationData(null);
+      setActiveSchoolData(null);
+
+      const pt = map.latLngToContainerPoint([inspected.lat, inspected.lon]);
+      setInspectedScreenPos({ sx: pt.x, sy: pt.y });
+    };
+
+    map.on('click', handleMapClick);
+    return () => {
+      map.off('click', handleMapClick);
+    };
+  }, [hourOffset, windSpeedKmh, windDirectionDeg, hotspots, stations, onInspectLocation]);
+
   // Three.js Atmospheric Physics WebGL Shader Setup (Layer 2)
   useEffect(() => {
     if (!containerRef.current || !canvasRef.current) return;
@@ -428,6 +509,9 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
 
     const initialZoom = mapInstanceRef.current ? mapInstanceRef.current.getZoom() : 11.0;
     const initialMpp = (40075016.686 * Math.cos((28.61 * Math.PI) / 180)) / (256 * Math.pow(2, initialZoom));
+    const initialBounds = mapInstanceRef.current
+      ? mapInstanceRef.current.getBounds()
+      : L.latLngBounds([28.25, 76.75], [28.95, 77.60]);
 
     const uniforms = {
       u_time: { value: 0.0 },
@@ -443,6 +527,14 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       u_hour_offset: { value: hourOffset },
       u_layer_visible: { value: layers.pollution ? 1.0 : 0.0 },
       u_vis_mode: { value: visMode === 'hotspots' ? 0.0 : 1.0 },
+      u_map_bounds: {
+        value: new THREE.Vector4(
+          initialBounds.getSouth(),
+          initialBounds.getWest(),
+          initialBounds.getNorth(),
+          initialBounds.getEast()
+        ),
+      },
     };
 
     const vertexShader = `
@@ -466,50 +558,74 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       uniform float u_hour_offset;
       uniform float u_layer_visible;
       uniform float u_vis_mode;
+      uniform vec4 u_map_bounds;
 
       varying vec2 vUv;
 
-      vec4 evaluatePollutionColorAndAlpha(float pmVal) {
-        if (pmVal < 25.0) {
-          return vec4(0.0);
-        }
-
-        vec3 cLow    = vec3(0.906, 0.784, 0.435); // #E7C86F
-        vec3 cMod    = vec3(0.914, 0.643, 0.361); // #E9A45C
-        vec3 cHigh   = vec3(0.910, 0.471, 0.286); // #E87849
-        vec3 cVHigh  = vec3(0.914, 0.337, 0.306); // #E9564E
-        vec3 cExt    = vec3(0.659, 0.231, 0.271); // #A83B45
+      // 7-Tier Scientific Dark-Map Palette
+      vec4 evaluateContinuousPollutionColor(float pmVal, float domainMask) {
+        vec3 cVLow  = vec3(0.094, 0.220, 0.180); // #18382E Deep Forest Emerald
+        vec3 cLow   = vec3(0.184, 0.463, 0.337); // #2F7656 Muted Green
+        vec3 cMod   = vec3(0.604, 0.671, 0.333); // #9AAB55 Muted Olive / Sage
+        vec3 cElev  = vec3(0.824, 0.639, 0.302); // #D2A34D Muted Amber
+        vec3 cHigh  = vec3(0.906, 0.478, 0.263); // #E77A43 Rust Orange
+        vec3 cVHigh = vec3(0.851, 0.306, 0.286); // #D94E49 Crimson / Coral
+        vec3 cExt   = vec3(0.518, 0.184, 0.263); // #842F43 Dark Burgundy / Plum
 
         vec3 rgb;
         float alpha;
 
-        if (pmVal <= 60.0) {
-          float t = (pmVal - 25.0) / 35.0;
-          rgb = mix(cLow * 0.9, cLow, t);
-          alpha = mix(0.02, 0.14, t);
-        } else if (pmVal <= 120.0) {
-          float t = (pmVal - 60.0) / 60.0;
+        if (pmVal <= 30.0) {
+          float t = clamp(pmVal / 30.0, 0.0, 1.0);
+          rgb = mix(cVLow * 0.95, cVLow, t);
+          alpha = mix(0.24, 0.30, t);
+        } else if (pmVal <= 60.0) {
+          float t = (pmVal - 30.0) / 30.0;
+          rgb = mix(cVLow, cLow, t);
+          alpha = mix(0.30, 0.36, t);
+        } else if (pmVal <= 100.0) {
+          float t = (pmVal - 60.0) / 40.0;
           rgb = mix(cLow, cMod, t);
-          alpha = mix(0.14, 0.30, t);
-        } else if (pmVal <= 180.0) {
-          float t = (pmVal - 120.0) / 60.0;
-          rgb = mix(cMod, cHigh, t);
-          alpha = mix(0.30, 0.48, t);
-        } else if (pmVal <= 260.0) {
-          float t = (pmVal - 180.0) / 80.0;
+          alpha = mix(0.36, 0.44, t);
+        } else if (pmVal <= 160.0) {
+          float t = (pmVal - 100.0) / 60.0;
+          rgb = mix(cMod, cElev, t);
+          alpha = mix(0.44, 0.52, t);
+        } else if (pmVal <= 240.0) {
+          float t = (pmVal - 160.0) / 80.0;
+          rgb = mix(cElev, cHigh, t);
+          alpha = mix(0.52, 0.60, t);
+        } else if (pmVal <= 320.0) {
+          float t = (pmVal - 240.0) / 80.0;
           rgb = mix(cHigh, cVHigh, t);
-          alpha = mix(0.48, 0.64, t);
+          alpha = mix(0.60, 0.67, t);
         } else {
-          float t = clamp((pmVal - 260.0) / 100.0, 0.0, 1.0);
+          float t = clamp((pmVal - 320.0) / 100.0, 0.0, 1.0);
           rgb = mix(cVHigh, cExt, t);
-          alpha = mix(0.64, 0.76, t);
+          alpha = mix(0.67, 0.74, t);
         }
 
-        return vec4(rgb, alpha);
+        return vec4(rgb, alpha * domainMask);
       }
 
       void main() {
         if (u_layer_visible < 0.5) {
+          gl_FragColor = vec4(0.0);
+          return;
+        }
+
+        // 1. Recover Geographic Coordinates from Mercator UV and Bounds
+        float fragLat = mix(u_map_bounds.x, u_map_bounds.z, vUv.y);
+        float fragLon = mix(u_map_bounds.y, u_map_bounds.w, vUv.x);
+
+        // 2. Delhi NCR Soft Domain Mask [28.25 - 28.95] x [76.75 - 77.60]
+        float southEdge = smoothstep(28.23, 28.27, fragLat);
+        float northEdge = 1.0 - smoothstep(28.93, 28.97, fragLat);
+        float westEdge  = smoothstep(76.73, 76.77, fragLon);
+        float eastEdge  = 1.0 - smoothstep(77.58, 77.62, fragLon);
+        float domainMask = southEdge * northEdge * westEdge * eastEdge;
+
+        if (domainMask <= 0.01) {
           gl_FragColor = vec4(0.0);
           return;
         }
@@ -520,8 +636,35 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
 
         float diurnalMod = 0.92 + 0.22 * sin((u_hour_offset - 8.0) * 0.26);
 
-        float maxConcentration = 0.0;
-        float sumConcentration = 0.0;
+        // 3. Regional Background Ventilation (cleaner in SW, hazier in North)
+        float etaLat = clamp((fragLat - 28.25) / 0.70, 0.0, 1.0);
+        float bgConcentration = (26.0 + 14.0 * etaLat) * diurnalMod;
+
+        // 4. Upstream NW Biomass Advection Tongue (entry: 28.85°N, 77.02°E)
+        float nwLat = 28.85;
+        float nwLon = 77.02;
+        float dyEntryM = (fragLat - nwLat) * 111139.0;
+        float dxEntryM = (fragLon - nwLon) * 111139.0 * cos(radians(fragLat));
+
+        float dDownSmoke = dxEntryM * wDir.x + dyEntryM * wDir.y;
+        float dCrossSmoke = -dxEntryM * wDir.y + dyEntryM * wDir.x;
+
+        float sigmaCrossSmoke = 9500.0 + 0.18 * max(dDownSmoke, 0.0);
+        float crossDecay = exp(-0.5 * (dCrossSmoke / max(sigmaCrossSmoke, 500.0)) * (dCrossSmoke / max(sigmaCrossSmoke, 500.0)));
+
+        float longDecay = 1.0;
+        if (dDownSmoke < 0.0) {
+          longDecay = exp(-0.5 * (dDownSmoke / 6000.0) * (dDownSmoke / 6000.0));
+        } else {
+          longDecay = 1.0 / (1.0 + dDownSmoke / 45000.0);
+        }
+
+        float smokeAmplitude = 65.0 * diurnalMod * max(u_wind_speed, 0.5);
+        float smokeConcentration = smokeAmplitude * crossDecay * longDecay;
+
+        // 5. Urban Hotspot Plumes
+        float maxUrban = 0.0;
+        float sumUrban = 0.0;
 
         for (int i = 0; i < 16; i++) {
           if (i >= u_num_hotspots) break;
@@ -537,7 +680,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           float dDownwind = dot(dMeters, wDir);
           float dCrosswind = dot(dMeters, wPerp);
 
-          // 1. Concentrated Core Component (Localized high-intensity plume core ~1350m)
+          // Core (1350m)
           float sigmaCoreDown = 1350.0;
           float sigmaCoreCross = 900.0;
           if (dDownwind > 0.0) {
@@ -549,7 +692,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           float rCoreCross = dCrosswind / max(sigmaCoreCross, 80.0);
           float distSqCore = rCoreDown * rCoreDown + rCoreCross * rCoreCross;
 
-          // 2. Surrounding Halo Component (Soft dispersing plume gradient ~3200m)
+          // Halo (3200m)
           float sigmaHaloDown = 3200.0;
           float sigmaHaloCross = 2200.0;
           if (dDownwind > 0.0) {
@@ -569,23 +712,20 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           float cHalo = basePm * 0.25 * exp(-0.5 * distSqHalo);
           float cPoint = cCore + cHalo;
 
-          maxConcentration = max(maxConcentration, cPoint);
-          sumConcentration += cPoint;
+          maxUrban = max(maxUrban, cPoint);
+          sumUrban += cPoint;
         }
 
-        float blendedConcentration = maxConcentration + 0.25 * (sumConcentration - maxConcentration);
+        float urbanConcentration = maxUrban + 0.22 * (sumUrban - maxUrban);
 
+        float finalConcentration = 0.0;
         if (u_vis_mode > 0.5) {
-          float regionalHaze = 38.0 * diurnalMod;
-          blendedConcentration = max(blendedConcentration, regionalHaze);
+          finalConcentration = bgConcentration + smokeConcentration + urbanConcentration;
+        } else {
+          finalConcentration = urbanConcentration + 0.35 * (bgConcentration + smokeConcentration);
         }
 
-        if (blendedConcentration < 25.0) {
-          gl_FragColor = vec4(0.0);
-          return;
-        }
-
-        gl_FragColor = evaluatePollutionColorAndAlpha(blendedConcentration);
+        gl_FragColor = evaluateContinuousPollutionColor(finalConcentration, domainMask);
       }
     `;
 
@@ -641,6 +781,15 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       threeRef.current.material.uniforms.u_hour_offset.value = hourOffset;
       threeRef.current.material.uniforms.u_layer_visible.value = layers.pollution ? 1.0 : 0.0;
       threeRef.current.material.uniforms.u_vis_mode.value = visMode === 'hotspots' ? 0.0 : 1.0;
+      if (mapInstanceRef.current) {
+        const bounds = mapInstanceRef.current.getBounds();
+        threeRef.current.material.uniforms.u_map_bounds.value.set(
+          bounds.getSouth(),
+          bounds.getWest(),
+          bounds.getNorth(),
+          bounds.getEast()
+        );
+      }
     }
   }, [windDirectionDeg, windSpeedKmh, hourOffset, layers.pollution, visMode]);
 
@@ -678,42 +827,17 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     const unitWDirX = Math.sin(transportRad);
     const unitWDirY = Math.cos(transportRad);
 
-    // Evaluates local concentration at any geographic coordinate (Two-Component: Core + Halo)
+    // Evaluates local concentration at any geographic coordinate using continuous physics engine
     const sampleConcentration = (lat: number, lon: number): number => {
-      let maxC = 0;
-      let sumC = 0;
-      const diurnalMod = 0.92 + 0.22 * Math.sin((hourOffset - 8.0) * 0.26);
-
-      for (let i = 0; i < hotspots.length; i++) {
-        const h = hotspots[i];
-        const dyMeters = (lat - h.lat) * 111139.0;
-        const dxMeters = (lon - h.lon) * 111139.0 * Math.cos((lat * Math.PI) / 180.0);
-
-        const dDown = dxMeters * unitWDirX + dyMeters * unitWDirY;
-        const dCross = -dxMeters * unitWDirY + dyMeters * unitWDirX;
-
-        // 1. Concentrated Core
-        const sigmaCoreDown = dDown > 0 ? 1350.0 + (windSpeedKmh / 20.0) * 1200.0 * 0.30 : 1350.0 * 0.65;
-        const sigmaCoreCross = 900.0;
-        const distSqCore = (dDown / sigmaCoreDown) ** 2 + (dCross / sigmaCoreCross) ** 2;
-
-        // 2. Dispersing Plume Halo
-        const sigmaHaloDown = dDown > 0 ? 3200.0 + (windSpeedKmh / 20.0) * 1800.0 * 0.55 : 3200.0 * 0.60;
-        const sigmaHaloCross = 2200.0 + (dDown > 0 ? dDown * 0.14 : 0);
-        const distSqHalo = (dDown / sigmaHaloDown) ** 2 + (dCross / sigmaHaloCross) ** 2;
-
-        if (distSqCore > 9.0 && distSqHalo > 9.0) continue;
-
-        const basePm = h.pm25 * diurnalMod;
-        const cCore = distSqCore <= 9.0 ? basePm * 0.75 * Math.exp(-0.5 * distSqCore) : 0;
-        const cHalo = distSqHalo <= 9.0 ? basePm * 0.25 * Math.exp(-0.5 * distSqHalo) : 0;
-        const cPoint = cCore + cHalo;
-
-        if (cPoint > maxC) maxC = cPoint;
-        sumC += cPoint;
-      }
-
-      return maxC + 0.25 * (sumC - maxC);
+      const res = evaluateContinuousField(
+        lat,
+        lon,
+        hourOffset,
+        windSpeedKmh,
+        windDirectionDeg,
+        hotspots
+      );
+      return res.pm25;
     };
 
     // Precompute roulette sampling weights for hotspots: W_i = (pm25 / 100)^1.8
@@ -729,31 +853,49 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       return hotspots[0];
     };
 
-    // Color mapper for atmospheric particulate matter
+    // Color mapper for atmospheric particulate matter (aligned with 7-tier scientific palette)
     const getParticleColor = (pmVal: number, alpha: number) => {
-      if (pmVal < 35) {
-        // Background clean air: subtle slate grey
+      if (pmVal <= 30) {
+        // Very low: deep forest emerald
         return {
-          stroke: `rgba(161, 172, 184, ${alpha * 0.25})`,
-          fill: `rgba(161, 172, 184, ${alpha * 0.35})`,
+          stroke: `rgba(47, 118, 86, ${alpha * 0.45})`,
+          fill: `rgba(47, 118, 86, ${alpha * 0.60})`,
         };
-      } else if (pmVal < 90) {
-        // Moderate: translucent golden amber
+      } else if (pmVal <= 60) {
+        // Low: muted green
         return {
-          stroke: `rgba(231, 200, 111, ${alpha * 0.52})`,
-          fill: `rgba(231, 200, 111, ${alpha * 0.68})`,
+          stroke: `rgba(91, 197, 152, ${alpha * 0.45})`,
+          fill: `rgba(91, 197, 152, ${alpha * 0.60})`,
         };
-      } else if (pmVal < 180) {
-        // Poor / Elevated: warm terracotta orange
+      } else if (pmVal <= 100) {
+        // Moderate: olive / sage
         return {
-          stroke: `rgba(232, 120, 73, ${alpha * 0.72})`,
-          fill: `rgba(232, 120, 73, ${alpha * 0.88})`,
+          stroke: `rgba(181, 199, 104, ${alpha * 0.55})`,
+          fill: `rgba(181, 199, 104, ${alpha * 0.70})`,
+        };
+      } else if (pmVal <= 160) {
+        // Elevated: muted amber
+        return {
+          stroke: `rgba(229, 184, 99, ${alpha * 0.65})`,
+          fill: `rgba(229, 184, 99, ${alpha * 0.80})`,
+        };
+      } else if (pmVal <= 240) {
+        // High: rust orange
+        return {
+          stroke: `rgba(240, 142, 88, ${alpha * 0.75})`,
+          fill: `rgba(240, 142, 88, ${alpha * 0.88})`,
+        };
+      } else if (pmVal <= 320) {
+        // Very High: crimson
+        return {
+          stroke: `rgba(230, 99, 95, ${alpha * 0.82})`,
+          fill: `rgba(230, 99, 95, ${alpha * 0.95})`,
         };
       } else {
-        // Very Poor / Severe Core: deep rich crimson
+        // Extreme: dark burgundy
         return {
-          stroke: `rgba(233, 86, 78, ${alpha * 0.82})`,
-          fill: `rgba(233, 86, 78, ${alpha * 0.98})`,
+          stroke: `rgba(178, 69, 95, ${alpha * 0.90})`,
+          fill: `rgba(178, 69, 95, ${alpha * 0.98})`,
         };
       }
     };
@@ -1353,6 +1495,9 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
                   setActiveStationData(data);
                   setActivePin(null);
                   setActiveSchoolData(null);
+                  setLocalInspected(null);
+                  setInspectedScreenPos(null);
+                  if (onInspectLocation) onInspectLocation(null);
                   if (onSelectStation) onSelectStation(id);
                   if (onSelectLocality) onSelectLocality(id);
                   if (mapInstanceRef.current) {
@@ -1400,6 +1545,9 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
                   setActiveSchoolData(data);
                   setActivePin(null);
                   setActiveStationData(null);
+                  setLocalInspected(null);
+                  setInspectedScreenPos(null);
+                  if (onInspectLocation) onInspectLocation(null);
                   if (onSelectSchool) onSelectSchool(id);
                   if (mapInstanceRef.current) {
                     const targetZoom = Math.max(mapInstanceRef.current.getZoom(), 13);
@@ -1449,6 +1597,9 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
                   setActivePin(data);
                   setActiveStationData(null);
                   setActiveSchoolData(null);
+                  setLocalInspected(null);
+                  setInspectedScreenPos(null);
+                  if (onInspectLocation) onInspectLocation(null);
                   if (onSelectHotspot) onSelectHotspot(id);
                   if (onSelectLocality) onSelectLocality(id);
                   if (mapInstanceRef.current) {
@@ -1741,59 +1892,179 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       </div>
 
       {/* BOTTOM-RIGHT: Multiscale Transport & Concentration Legend */}
-      <div className="map-floating-panel map-ctrl-bottom-right" style={{ padding: '9px 12px', minWidth: '205px' }}>
+      <div className="map-floating-panel map-ctrl-bottom-right" style={{ padding: '9px 12px', minWidth: '220px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
           <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.4px', textTransform: 'uppercase' }}>
             Air Intelligence Key
           </span>
           <span style={{ fontSize: '9px', color: 'var(--accent-cyan)', fontWeight: 600 }}>
-            {visMode === 'hotspots' ? 'Hotspot Cores' : 'Continuous'}
+            {visMode === 'hotspots' ? 'Hotspot Cores' : 'Continuous Field'}
           </span>
         </div>
 
-        {/* 1. Concentration Scale */}
+        {/* 1. Concentration Scale: 7-Tier Scientific Dark-Map Palette */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
           <div
             style={{
               width: '100%',
-              height: '6px',
+              height: '7px',
               borderRadius: '2px',
-              background: 'linear-gradient(to right, #E7C86F 0%, #E9A45C 25%, #E87849 50%, #E9564E 75%, #A83B45 100%)',
+              background: 'linear-gradient(to right, #18382E 0%, #2F7656 16%, #9AAB55 33%, #D2A34D 50%, #E77A43 67%, #D94E49 84%, #842F43 100%)',
             }}
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '8.5px', color: 'var(--text-muted)' }}>
-            <span>0 Good</span>
-            <span>90 Mod</span>
-            <span>180 Poor</span>
-            <span>250+ Severe</span>
+            <span style={{ color: '#4EBA89' }}>0 Clean</span>
+            <span style={{ color: '#B5C768' }}>60 Mod</span>
+            <span style={{ color: '#E5B863' }}>100 Elev</span>
+            <span style={{ color: '#F08E58' }}>160 High</span>
+            <span style={{ color: '#B2455F' }}>320+ Sev</span>
           </div>
         </div>
 
-        <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '5px 0 4px 0' }} />
+        <div style={{ fontSize: '8.5px', color: 'var(--text-muted)', lineHeight: 1.25, marginTop: '2px' }}>
+          Continuous basin field: Green represents verified clean air.
+        </div>
+
+        <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '4px 0 3px 0' }} />
 
         {/* 2. Flow & Transport Symbology */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '3.5px', fontSize: '9.5px', color: 'var(--text-secondary)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '9px', color: 'var(--text-secondary)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#A83B45', border: '1.5px solid #E9564E', flexShrink: 0 }} />
-            <span>Hotspot Core & Halo Gradient</span>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#842F43', border: '1.5px solid #D94E49', flexShrink: 0 }} />
+            <span>Hotspot Core & Dispersion Halo</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', border: '2px solid #27D3E2', background: 'transparent', flexShrink: 0 }} />
+            <span>CPCB / DPCC Ground Sensor Station</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
-              <span style={{ width: '3px', height: '3px', borderRadius: '50%', background: '#E87849' }} />
-              <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#E9564E' }} />
-              <span style={{ width: '3px', height: '3px', borderRadius: '50%', background: '#A83B45' }} />
+              <span style={{ width: '3px', height: '3px', borderRadius: '50%', background: '#5BC598' }} />
+              <span style={{ width: '3px', height: '3px', borderRadius: '50%', background: '#E5B863' }} />
+              <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#E6635F' }} />
             </div>
-            <span>Particle Transport (Mass Motion)</span>
+            <span>Particle Transport (Mass Advection)</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <svg width="14" height="8" viewBox="0 0 14 8" fill="none" style={{ flexShrink: 0 }}>
               <line x1="0" y1="4" x2="10" y2="4" stroke="#27D3E2" strokeWidth="1.8" />
               <polygon points="9,1 14,4 9,7" fill="#27D3E2" />
             </svg>
-            <span>{currentZoom <= 12 ? 'Dominant Regional Transport (SE)' : 'Local Transport Streamlines'}</span>
+            <span>{currentZoom <= 12 ? 'Dominant NW Transport Corridor (SE)' : 'Local Wind Vectors'}</span>
           </div>
         </div>
       </div>
+
+      {/* Inspected Location Target Reticle on Map */}
+      {inspectedScreenPos && (
+        <div
+          className="inspector-reticle"
+          style={{ left: `${inspectedScreenPos.sx}px`, top: `${inspectedScreenPos.sy}px` }}
+        >
+          <div className="inspector-reticle-pulse" />
+          <div className="inspector-reticle-center" />
+        </div>
+      )}
+
+      {/* POPUP 0: Physics-Informed Spatial Estimate HUD */}
+      {localInspected && (
+        <div
+          className="map-floating-panel"
+          style={{
+            bottom: '180px',
+            left: '20px',
+            width: '320px',
+            padding: '12px 14px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            zIndex: 55,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Physics-Informed Spatial Estimate
+              </div>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '1px' }}>
+                {localInspected.lat.toFixed(4)}°N, {localInspected.lon.toFixed(4)}°E
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setLocalInspected(null);
+                setInspectedScreenPos(null);
+                if (onInspectLocation) onInspectLocation(null);
+              }}
+              style={{ color: 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', background: 'transparent', border: 'none', padding: '2px' }}
+              aria-label="Close inspector"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+            <span style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)' }}>
+              {localInspected.estimatedPm25}
+            </span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>µg/m³ PM2.5</span>
+            <span className={`severity-badge ${localInspected.tier.badge}`} style={{ marginLeft: 'auto', fontSize: '9.5px' }}>
+              {lang === 'hi' ? localInspected.tier.label_hi : localInspected.tier.label_en}
+            </span>
+          </div>
+
+          {/* Uncertainty & Provenance Details */}
+          <div
+            style={{
+              fontSize: '10.5px',
+              padding: '6px 8px',
+              borderRadius: '3px',
+              background: 'var(--bg-surface-elevated)',
+              border: '1px solid var(--border-subtle)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '3px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Spatial Uncertainty:</span>
+              <strong style={{ color: 'var(--accent-cyan)' }}>±{localInspected.uncertaintySpread} µg/m³</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Nearest Ground Sensor:</span>
+              <span style={{ color: 'var(--text-secondary)' }}>
+                {localInspected.nearestStation.name_en} ({localInspected.nearestStation.distanceKm} km)
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Sensor Observation:</span>
+              <span style={{ color: 'var(--text-secondary)' }}>
+                {localInspected.nearestStation.observedPm25} µg/m³ ({localInspected.nearestStation.agency})
+              </span>
+            </div>
+          </div>
+
+          {/* Model Component Breakdown */}
+          <div style={{ fontSize: '10px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-subtle)', paddingTop: '5px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+              <span>Regional Background:</span>
+              <span style={{ color: 'var(--text-secondary)' }}>{localInspected.components.background} µg/m³</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+              <span>NW Biomass Advection:</span>
+              <span style={{ color: 'var(--text-secondary)' }}>{localInspected.components.smokeAdvection} µg/m³</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Urban Plume Dispersion:</span>
+              <span style={{ color: 'var(--text-secondary)' }}>{localInspected.components.urbanDispersion} µg/m³</span>
+            </div>
+          </div>
+
+          <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', lineHeight: 1.35, fontStyle: 'italic' }}>
+            * Continuous estimate derived via physics-informed advection-dispersion with distance-to-station uncertainty.
+          </div>
+        </div>
+      )}
 
       {/* POPUP 1: Inferred Hotspot Core Detail */}
       {activePin && (
