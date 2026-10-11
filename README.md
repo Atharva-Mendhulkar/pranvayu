@@ -125,6 +125,7 @@ cd web && npm run build
 - **NASA FIRMS**: VIIRS 375m active fire detections (NASA Earth Science Data Policy).
 - **Copernicus Atmosphere Monitoring Service (CAMS)**: European air quality model forecasts.
 - **OpenAQ & CPCB**: Surface PM2.5 monitor station observations (Open Data / CPCB).
+- **OpenFreeMap & OpenStreetMap**: Vector basemap tiles and geospatial boundaries ([ODbL](https://www.openstreetmap.org/copyright)).
 
 ---
 

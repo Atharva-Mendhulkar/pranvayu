@@ -319,6 +319,8 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
             • <strong>Copernicus Atmosphere Monitoring Service (CAMS):</strong> European Centre for Medium-Range Weather Forecasts (ECMWF).
             <br />
             • <strong>OpenAQ & CPCB:</strong> Central Pollution Control Board and DPCC surface monitoring station feeds.
+            <br />
+            • <strong>OpenFreeMap & OpenStreetMap:</strong> Vector basemap tiles (<a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a>, <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer">OpenMapTiles</a>, <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>).
           </p>
 
           <p style={{ marginTop: '12px', color: 'var(--text-muted)', fontSize: '12px' }}>
