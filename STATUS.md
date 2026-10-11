@@ -35,7 +35,7 @@ Phase: Complete Geospatial Air Intelligence Dashboard Redesign
   5. *PM2.5 Forecast Chart*: Interactive 48-hour time series chart with $p_{10}$–$p_{90}$ uncertainty envelope, median line, vertical timeline cursor, and click-to-seek scrubbing.
 
 - **Interactive Geospatial Visualization Engine (`web/src/components/DelhiFluidMap.tsx`)**:
-  - Real, interactive Leaflet base map with CartoDB Dark Matter tiles (pan, zoom, pinch, double-click).
+  - Real, interactive Leaflet base map with OpenStreetMap tiles (pan, zoom, pinch, double-click).
   - Three.js WebGL shader with physics-informed Gaussian plume dispersion, Pasquill-Gifford lateral spread, Kelvin-Helmholtz shear vorticity, Beer-Lambert optical extinction, and scientific color stops.
   - Sub-pixel coordinate synchronization via `map.latLngToContainerPoint([lat, lon])` on Leaflet `move`, `zoom`, and `resize` events.
   - Toggleable 2D wind streamline particles flowing smoothly along the meteorologically inverted transport vector.

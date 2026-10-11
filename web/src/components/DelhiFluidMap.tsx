@@ -133,7 +133,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     }
   }, [selectedHotspotId, hotspots]);
 
-  // Initialize interactive Leaflet map with CartoDB Dark Matter tiles
+  // Initialize interactive Leaflet map with OpenStreetMap tiles
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
@@ -153,10 +153,10 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         [28.9216, 77.5195],
       ]);
 
-      // CartoDB Dark Matter tile layer
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        subdomains: 'abcd',
+      // OpenStreetMap tile layer
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       }).addTo(map);
 
       mapInstanceRef.current = map;

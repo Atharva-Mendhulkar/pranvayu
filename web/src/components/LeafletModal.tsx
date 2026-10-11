@@ -209,10 +209,10 @@ export const LeafletModal: React.FC<LeafletModalProps> = ({ isOpen, onClose }) =
 
           <section style={{ marginBottom: '18px' }}>
             <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>
-              Available Tile Layers
+              Tile Layer Foundation
             </h3>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
-              {['Dark Matter (CartoDB)', 'Positron (CartoDB)', 'OpenStreetMap', 'Voyager (CartoDB)'].map((st) => (
+              {['OpenStreetMap Standard', 'OpenStreetMap Inverted Dark', 'Leaflet 1.9.4'].map((st) => (
                 <span
                   key={st}
                   style={{
@@ -248,7 +248,7 @@ export const LeafletModal: React.FC<LeafletModalProps> = ({ isOpen, onClose }) =
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <CheckCircleIcon size={16} color="#10B981" />
               <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#F8FAFC' }}>
-                Leaflet © 2010–2026 Volodymyr Agafonkin · Maps © OpenStreetMap contributors · CARTO
+                Leaflet © 2010–2026 Volodymyr Agafonkin · Maps © OpenStreetMap contributors
               </span>
             </div>
 
