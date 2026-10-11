@@ -1,6 +1,6 @@
 import React from 'react';
 import { Language, t } from '../lib/i18n';
-import { MapIcon, LayersIcon, ActivityIcon, MenuIcon, OpenFreeMapLogo } from './Icons';
+import { MapIcon, LayersIcon, ActivityIcon, MenuIcon } from './Icons';
 
 interface HeaderProps {
   selectedLocality: string;
@@ -15,7 +15,6 @@ interface HeaderProps {
   onPageChange: (page: 'dashboard' | 'method') => void;
   isSideMenuOpen?: boolean;
   onToggleSideMenu?: () => void;
-  onOpenOpenFreeMapModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -31,7 +30,6 @@ export const Header: React.FC<HeaderProps> = ({
   onPageChange,
   isSideMenuOpen,
   onToggleSideMenu,
-  onOpenOpenFreeMapModal,
 }) => {
   const getDayLabel = (dateStr: string, idx: number) => {
     if (idx === 0) return t('today', lang);
@@ -85,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
           aria-label="Select locality"
         >
           {localitiesList.map((loc) => (
-            <option key={loc.id} value={loc.id} style={{ background: '#FFFFFF', color: '#0F172A' }}>
+            <option key={loc.id} value={loc.id} style={{ background: '#0F172A', color: '#F8FAFC' }}>
               {lang === 'hi' ? loc.name_hi : loc.name_en}
             </option>
           ))}
@@ -124,31 +122,6 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         </div>
 
-        {/* OpenFreeMap Logo & Info Button */}
-        {onOpenOpenFreeMapModal && (
-          <button
-            onClick={onOpenOpenFreeMapModal}
-            title="OpenFreeMap Info & Styles"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              borderRadius: '9999px',
-              background: '#F1F5F9',
-              border: '1px solid #CBD5E1',
-              color: '#1E293B',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <OpenFreeMapLogo size={16} />
-            <span>OpenFreeMap</span>
-          </button>
-        )}
-
         {/* Collapsible Advisory Side Menu Toggle Button */}
         {currentPage === 'dashboard' && onToggleSideMenu && (
           <button
@@ -159,12 +132,13 @@ export const Header: React.FC<HeaderProps> = ({
               gap: '6px',
               padding: '6px 14px',
               borderRadius: '9999px',
-              background: isSideMenuOpen ? '#2563EB' : '#0F172A',
+              background: isSideMenuOpen ? 'var(--accent-indigo)' : 'rgba(255, 255, 255, 0.12)',
               color: '#FFFFFF',
               fontSize: '12.5px',
               fontWeight: 600,
               cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              border: '1px solid var(--border-glass-light)',
+              boxShadow: '0 2px 10px rgba(0, 0, 0, 0.25)',
               transition: 'all 0.15s ease',
             }}
           >

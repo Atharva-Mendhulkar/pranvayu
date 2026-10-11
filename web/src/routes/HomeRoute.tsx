@@ -4,7 +4,7 @@ import { Language } from '../lib/i18n';
 import { DelhiFluidMap, HotspotData } from '../components/DelhiFluidMap';
 import { CollapsibleSideMenu } from '../components/CollapsibleSideMenu';
 import { generateDeterministicHeadline, ClientRulesConfig } from '../lib/rules';
-import { PlayIcon, PauseIcon, WindIcon, ActivityIcon, CheckCircleIcon, ClockIcon } from '../components/Icons';
+import { PlayIcon, PauseIcon, WindIcon, ActivityIcon, ClockIcon } from '../components/Icons';
 
 interface HomeRouteProps {
   payload: ForecastPayload;
@@ -92,6 +92,7 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
         onToggleViewMode={setMapViewMode}
         isFullScreen={true}
         onOpenInfoModal={onOpenInfoModal}
+        isSideMenuOpen={isSideMenuOpen}
       />
 
       {/* 2. Floating Atmospheric Clean Window & Headline Card (Bottom Left) */}
@@ -99,21 +100,23 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
         style={{
           position: 'fixed',
           bottom: '24px',
-          left: '16px',
+          left: '24px',
           zIndex: 35,
-          maxWidth: '380px',
-          background: 'rgba(255, 255, 255, 0.94)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: '1px solid #CBD5E1',
+          width: '360px',
+          maxWidth: 'calc(100vw - 48px)',
+          background: 'rgba(15, 23, 42, 0.90)',
+          backdropFilter: 'blur(24px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
           borderRadius: '16px',
           padding: '16px 20px',
-          boxShadow: '0 12px 32px rgba(0, 0, 0, 0.1)',
+          boxShadow: 'var(--shadow-glass)',
+          color: 'var(--text-primary)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <ActivityIcon size={16} color="#2563EB" />
-          <span style={{ fontSize: '11.5px', fontWeight: 700, textTransform: 'uppercase', color: '#2563EB', letterSpacing: '0.5px' }}>
+          <ActivityIcon size={16} color="var(--accent-indigo)" />
+          <span style={{ fontSize: '11.5px', fontWeight: 700, textTransform: 'uppercase', color: '#818CF8', letterSpacing: '0.5px' }}>
             {payload.locality.name_en} · {currentDay.date}
           </span>
           <span
@@ -123,16 +126,16 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
               fontWeight: 700,
               padding: '2px 8px',
               borderRadius: '9999px',
-              background: currentDay.confidence === 'high' ? 'rgba(5, 150, 105, 0.1)' : 'rgba(217, 119, 6, 0.1)',
-              color: currentDay.confidence === 'high' ? '#059669' : '#D97706',
-              border: `1px solid ${currentDay.confidence === 'high' ? 'rgba(5, 150, 105, 0.3)' : 'rgba(217, 119, 6, 0.3)'}`,
+              background: currentDay.confidence === 'high' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+              color: currentDay.confidence === 'high' ? '#34D399' : '#FBBF24',
+              border: `1px solid ${currentDay.confidence === 'high' ? 'rgba(16, 185, 129, 0.35)' : 'rgba(245, 158, 11, 0.35)'}`,
             }}
           >
             {currentDay.confidence} confidence
           </span>
         </div>
 
-        <h1 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', lineHeight: 1.35, marginBottom: '10px' }}>
+        <h1 style={{ fontSize: '14.5px', fontWeight: 700, color: '#FFFFFF', lineHeight: 1.35, marginBottom: '10px' }}>
           {headlineText}
         </h1>
 
@@ -145,14 +148,14 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
               gap: '8px',
               padding: '6px 12px',
               borderRadius: '8px',
-              background: 'rgba(5, 150, 105, 0.08)',
-              border: '1px solid rgba(5, 150, 105, 0.25)',
-              color: '#059669',
+              background: 'rgba(16, 185, 129, 0.12)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              color: '#34D399',
               fontSize: '12.5px',
               fontWeight: 700,
             }}
           >
-            <ClockIcon size={14} color="#059669" />
+            <ClockIcon size={14} color="#34D399" />
             <span>
               {lang === 'hi' ? 'सबसे स्वच्छ अवधि:' : 'Cleanest Window:'}{' '}
               {currentDay.clean_window.from} – {currentDay.clean_window.to}
@@ -169,18 +172,20 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
         style={{
           position: 'fixed',
           bottom: '24px',
-          left: '50%',
-          transform: 'translateX(-50%)',
+          left: isSideMenuOpen ? 'clamp(395px, 48%, calc(100vw - 720px))' : '50%',
+          transform: isSideMenuOpen ? 'none' : 'translateX(-50%)',
+          transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
           zIndex: 35,
           width: '460px',
           maxWidth: 'calc(100vw - 420px)',
-          background: 'rgba(255, 255, 255, 0.94)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: '1px solid #CBD5E1',
+          background: 'rgba(15, 23, 42, 0.90)',
+          backdropFilter: 'blur(24px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
           borderRadius: '16px',
           padding: '12px 18px',
-          boxShadow: '0 12px 32px rgba(0, 0, 0, 0.1)',
+          boxShadow: 'var(--shadow-glass)',
+          color: 'var(--text-primary)',
         }}
       >
         <div
@@ -203,24 +208,24 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
                 padding: '5px 12px',
                 fontSize: '12px',
                 fontWeight: 700,
-                background: isPlaying ? '#F1F5F9' : '#2563EB',
-                color: isPlaying ? '#0F172A' : '#FFFFFF',
+                background: isPlaying ? 'rgba(255, 255, 255, 0.1)' : 'var(--accent-indigo)',
+                color: '#FFFFFF',
                 borderRadius: '8px',
                 cursor: 'pointer',
-                border: isPlaying ? '1px solid #CBD5E1' : 'none',
+                border: '1px solid rgba(255, 255, 255, 0.14)',
               }}
             >
-              {isPlaying ? <PauseIcon size={12} color="#0F172A" /> : <PlayIcon size={12} color="#FFFFFF" />}
+              {isPlaying ? <PauseIcon size={12} color="#FFFFFF" /> : <PlayIcon size={12} color="#FFFFFF" />}
               <span>{isPlaying ? (lang === 'hi' ? 'रोकें' : 'Pause') : (lang === 'hi' ? 'चलाएँ' : 'Play 48h')}</span>
             </button>
 
-            <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#0F172A' }}>
+            <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#FFFFFF' }}>
               {formatHourLabel(hourOffset)}
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: '#64748B' }}>
-            <WindIcon size={13} color="#0284C7" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+            <WindIcon size={13} color="var(--accent-cyan)" />
             <span>14 km/h NW → SE stubble corridor</span>
           </div>
         </div>
@@ -235,7 +240,7 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
             width: '100%',
             height: '5px',
             cursor: 'pointer',
-            accentColor: '#2563EB',
+            accentColor: 'var(--accent-indigo)',
           }}
           aria-label="Forecast hour scrubber"
         />
@@ -245,7 +250,7 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
             display: 'flex',
             justifyContent: 'space-between',
             fontSize: '11px',
-            color: '#64748B',
+            color: 'var(--text-muted)',
             marginTop: '4px',
           }}
         >

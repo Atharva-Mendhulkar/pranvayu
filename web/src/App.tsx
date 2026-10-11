@@ -100,7 +100,7 @@ export const App: React.FC = () => {
 
   if (isLoading || !payload) {
     return (
-      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', color: '#475569' }}>
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#090D16', color: '#94A3B8' }}>
         <div style={{ fontSize: '16px', fontWeight: 600 }}>Loading atmospheric air advisory intelligence...</div>
       </div>
     );
@@ -109,7 +109,7 @@ export const App: React.FC = () => {
   const dayDates = payload.days.map((d) => d.date);
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh', background: '#F8FAFC' }}>
+    <div style={{ position: 'relative', minHeight: '100vh', background: '#090D16' }}>
       {/* State Debug / Notice Banners */}
       {debugState === 'stale' && (
         <div className="state-banner">
@@ -150,7 +150,6 @@ export const App: React.FC = () => {
         onPageChange={setCurrentPage}
         isSideMenuOpen={isSideMenuOpen}
         onToggleSideMenu={() => setIsSideMenuOpen(!isSideMenuOpen)}
-        onOpenOpenFreeMapModal={() => setIsOpenFreeMapModalOpen(true)}
       />
 
       {/* Page 1: Integrated Dashboard with Full Screen Map & Collapsible Side Menu */}

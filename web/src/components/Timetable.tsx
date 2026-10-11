@@ -162,9 +162,9 @@ export const Timetable: React.FC<TimetableProps> = ({
                         onChange={(e) => handleTimeChange(v.period_id, e.target.value)}
                         onClick={(e) => e.stopPropagation()}
                         style={{
-                          background: '#FFFFFF',
-                          color: '#0F172A',
-                          border: '1px solid #CBD5E1',
+                          background: 'rgba(15, 23, 42, 0.95)',
+                          color: '#F8FAFC',
+                          border: '1px solid var(--border-glass-light)',
                           borderRadius: '4px',
                           padding: '2px 4px',
                           fontSize: '12px',
@@ -198,8 +198,9 @@ export const Timetable: React.FC<TimetableProps> = ({
               {isExpanded && !isEditing && (
                 <div
                   style={{
-                    background: '#F8FAFC',
-                    border: '1px solid #CBD5E1',
+                    background: 'rgba(30, 41, 59, 0.75)',
+                    backdropFilter: 'blur(12px)',
+                    border: '1px solid var(--border-glass)',
                     borderTop: 'none',
                     borderRadius: '0 0 var(--radius-md) var(--radius-md)',
                     padding: '12px 18px',

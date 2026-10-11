@@ -68,3 +68,23 @@
 - Re-architected top navigation into a floating rounded corner glassmorphic pill nav bar.
 - Added OpenFreeMap documentation and style modal with links to GitHub, X, Bluesky, and Zsolt Ero's project background.
 
+### 2026-10-11 18:50 IST — Dark Mode Overhaul, Synchronized MapLibre Vector Map, & Atmospheric Dispersion Physics
+- Returned entire application UI to a sleek cosmic dark glassmorphic theme (`#090D16`, `rgba(15, 23, 42, 0.92)` frosted glass, high-contrast `#F8FAFC` and `#94A3B8`).
+- Removed OpenFreeMap button from the top navigation bar while preserving required attribution in the bottom badge and info modal.
+- Made the actual vector map (streets, Yamuna river, Ring Road, localities) 100% visible and interactive in Top View.
+- Added real-time synchronization between MapLibre GL map and Three.js shader: map pan, zoom, rotate, and resize events project station coordinates directly into shader uniforms, locking smoke plumes to geographic reality without coordinate drift.
+- Enriched atmospheric dispersion physics in the GLSL fragment shader:
+  - Gaussian plume dispersion along wind vector with Pasquill-Gifford lateral spreading ($\sigma_y(x) = \sigma_0 + \alpha \sqrt{x_{dw}}$) and exponential downwind decay with sharp upstream cutoff.
+  - Zoom scale factor scaling plume width with map zoom.
+  - Kelvin-Helmholtz vorticity & 2-layer vector domain-warping simulating rolling shear vortices.
+  - Kolmogorov turbulent cascade multi-octave noise generating delicate micro-particulate tendrils.
+  - Beer-Lambert optical extinction ($T = \exp(-\tau \rho)$) with transmittance-based cloud alpha.
+  - Directional volumetric self-shadowing simulating dark soot core sunlight attenuation.
+  - Authentic CPCB chromatic spectrum: emerald fringe $\to$ sulfuric amber $\to$ burnt orange $\to$ toxic crimson $\to$ hazardous soot core maroon.
+- Resolved all UI layout collisions:
+  - Top Wind HUD and Attribution Badge dynamically slide between `right: 476px` (when side menu is open) and `right: 20px` (when side menu is closed).
+  - Selected station pin card positioned at `bottom: 180px, left: 24px`, safely above the Clean Window card at `bottom: 24px`.
+  - Clean Window card and 48-Hour Forecast Scrubber aligned cleanly without overlap.
+- Verification: `make test` passed 10/10, `make lint` passed with 0 errors, dev server responding with HTTP 200 OK.
+
+

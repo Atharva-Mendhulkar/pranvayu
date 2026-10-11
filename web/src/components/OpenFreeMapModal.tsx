@@ -26,9 +26,9 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
         alignItems: 'center',
         justifyContent: 'center',
         padding: '16px',
-        background: 'rgba(15, 23, 42, 0.45)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
+        background: 'rgba(9, 13, 22, 0.75)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
       }}
       onClick={onClose}
     >
@@ -38,14 +38,14 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
           maxWidth: '680px',
           maxHeight: '90vh',
           overflowY: 'auto',
-          background: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
-          border: '1px solid rgba(203, 213, 225, 0.8)',
+          background: 'rgba(15, 23, 42, 0.95)',
+          backdropFilter: 'blur(28px)',
+          WebkitBackdropFilter: 'blur(28px)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
           borderRadius: '16px',
           padding: '24px 28px',
-          boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.18)',
-          color: '#0F172A',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
+          color: '#F8FAFC',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -55,7 +55,7 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            borderBottom: '1px solid #E2E8F0',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
             paddingBottom: '16px',
             marginBottom: '20px',
           }}
@@ -63,10 +63,10 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <OpenFreeMapLogo size={32} />
             <div>
-              <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', lineHeight: 1.2 }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.2 }}>
                 OpenFreeMap
               </h2>
-              <p style={{ fontSize: '13px', color: '#64748B' }}>
+              <p style={{ fontSize: '13px', color: '#94A3B8' }}>
                 Free, open-source vector map tiles powered by OpenStreetMap
               </p>
             </div>
@@ -78,10 +78,10 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
             style={{
               padding: '6px',
               borderRadius: '8px',
-              border: '1px solid #E2E8F0',
-              background: '#F8FAFC',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              background: 'rgba(255, 255, 255, 0.06)',
               cursor: 'pointer',
-              color: '#64748B',
+              color: '#94A3B8',
             }}
           >
             <XIcon size={18} />
@@ -100,7 +100,8 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
               gap: '6px',
               padding: '6px 12px',
               borderRadius: '8px',
-              background: '#0F172A',
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.14)',
               color: '#FFFFFF',
               fontSize: '12px',
               fontWeight: 600,
@@ -121,9 +122,9 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
               gap: '6px',
               padding: '6px 12px',
               borderRadius: '8px',
-              background: '#F1F5F9',
-              border: '1px solid #CBD5E1',
-              color: '#334155',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: '#94A3B8',
               fontSize: '12px',
               fontWeight: 600,
               textDecoration: 'none',
@@ -143,9 +144,9 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
               gap: '6px',
               padding: '6px 12px',
               borderRadius: '8px',
-              background: '#F1F5F9',
-              border: '1px solid #CBD5E1',
-              color: '#334155',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: '#94A3B8',
               fontSize: '12px',
               fontWeight: 600,
               textDecoration: 'none',
@@ -165,9 +166,9 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
               gap: '6px',
               padding: '6px 12px',
               borderRadius: '8px',
-              background: '#F1F5F9',
-              border: '1px solid #CBD5E1',
-              color: '#334155',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: '#94A3B8',
               fontSize: '12px',
               fontWeight: 600,
               textDecoration: 'none',
@@ -187,8 +188,9 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
               gap: '6px',
               padding: '6px 12px',
               borderRadius: '8px',
-              background: '#0284C7',
-              color: '#FFFFFF',
+              background: 'rgba(2, 132, 199, 0.25)',
+              border: '1px solid rgba(2, 132, 199, 0.4)',
+              color: '#38BDF8',
               fontSize: '12px',
               fontWeight: 600,
               textDecoration: 'none',
@@ -200,9 +202,9 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
         </div>
 
         {/* Content body */}
-        <div style={{ fontSize: '13.5px', lineHeight: '22px', color: '#334155' }}>
+        <div style={{ fontSize: '13.5px', lineHeight: '22px', color: '#94A3B8' }}>
           <section style={{ marginBottom: '18px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A', marginBottom: '4px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>
               What is OpenFreeMap?
             </h3>
             <p>
@@ -218,7 +220,7 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
           </section>
 
           <section style={{ marginBottom: '18px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A', marginBottom: '4px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>
               Available Styles
             </h3>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
@@ -230,9 +232,9 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
                     borderRadius: '6px',
                     fontSize: '12px',
                     fontWeight: 600,
-                    background: '#F1F5F9',
-                    border: '1px solid #CBD5E1',
-                    color: '#1E293B',
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    color: '#E2E8F0',
                   }}
                 >
                   {st}
@@ -242,17 +244,17 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
           </section>
 
           <section style={{ marginBottom: '18px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A', marginBottom: '4px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>
               Who is behind this project?
             </h3>
             <p>
-              Created by <strong>Zsolt Ero</strong>. After 9 years of running map tile infrastructure for MapHub,
+              Created by <strong style={{ color: '#F8FAFC' }}>Zsolt Ero</strong>. After 9 years of running map tile infrastructure for MapHub,
               he open-sourced it and launched OpenFreeMap so developers no longer face huge bills or complex self-hosting setups.
             </p>
           </section>
 
           <section style={{ marginBottom: '18px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A', marginBottom: '4px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>
               How is it free and what is the tech stack?
             </h3>
             <p>
@@ -266,8 +268,8 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
             style={{
               padding: '12px 16px',
               borderRadius: '10px',
-              background: '#F8FAFC',
-              border: '1px solid #E2E8F0',
+              background: 'rgba(255, 255, 255, 0.04)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -276,8 +278,8 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <CheckCircleIcon size={16} color="#059669" />
-              <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#1E293B' }}>
+              <CheckCircleIcon size={16} color="#10B981" />
+              <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#F8FAFC' }}>
                 OpenFreeMap © OpenMapTiles · Data from OpenStreetMap
               </span>
             </div>
@@ -289,7 +291,7 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
               style={{
                 fontSize: '12px',
                 fontWeight: 700,
-                color: '#2563EB',
+                color: 'var(--accent-cyan)',
                 textDecoration: 'none',
               }}
             >
