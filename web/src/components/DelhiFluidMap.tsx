@@ -3,15 +3,15 @@ import * as THREE from 'three';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { Language } from '../lib/i18n';
-import { WindIcon, CompassIcon, LayersIcon, MapIcon } from './Icons';
+import { WindIcon, CompassIcon, LayersIcon, MapIcon, OpenFreeMapLogo, InfoIcon } from './Icons';
 
-export type OpenFreeMapStyle = 'dark' | 'positron' | 'liberty' | 'bright' | 'fiord';
+export type OpenFreeMapStyle = 'positron' | 'bright' | 'liberty' | 'dark' | 'fiord';
 
 export const OPENFREEMAP_STYLES: Record<OpenFreeMapStyle, { name: string; url: string }> = {
-  dark: { name: 'Dark', url: 'https://tiles.openfreemap.org/styles/dark' },
   positron: { name: 'Positron', url: 'https://tiles.openfreemap.org/styles/positron' },
-  liberty: { name: 'Liberty', url: 'https://tiles.openfreemap.org/styles/liberty' },
   bright: { name: 'Bright', url: 'https://tiles.openfreemap.org/styles/bright' },
+  liberty: { name: 'Liberty', url: 'https://tiles.openfreemap.org/styles/liberty' },
+  dark: { name: 'Dark', url: 'https://tiles.openfreemap.org/styles/dark' },
   fiord: { name: 'Fiord', url: 'https://tiles.openfreemap.org/styles/fiord' },
 };
 
@@ -35,11 +35,11 @@ interface DelhiFluidMapProps {
   lang: Language;
   onSelectLocality?: (locId: string) => void;
   onToggleViewMode?: (mode: 'top' | 'horizontal') => void;
+  isFullScreen?: boolean;
+  onOpenInfoModal?: () => void;
 }
 
 // Exact Web Mercator tile parameters for Delhi NCR at Zoom 11
-// Covers 16 CartoDB Dark Matter / OSM tiles (X: 1461..1464, Y: 852..855)
-// Lat: ~28.304°N to ~28.922°N | Lon: ~76.816°E to ~77.520°E
 const TILE_ZOOM = 11;
 const X_MIN = 1461;
 const Y_MIN = 852;
@@ -69,13 +69,16 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
   lang,
   onSelectLocality,
   onToggleViewMode,
+  isFullScreen = false,
+  onOpenInfoModal,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<maplibregl.Map | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const windCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  const [currentStyle, setCurrentStyle] = useState<OpenFreeMapStyle>('dark');
+  const [currentStyle, setCurrentStyle] = useState<OpenFreeMapStyle>('positron');
   const [activePin, setActivePin] = useState<HotspotData | null>(null);
   const [pinScreenCoords, setPinScreenCoords] = useState<Array<{ id: string; sx: number; sy: number; data: HotspotData }>>([]);
   const [mapTilesLoaded, setMapTilesLoaded] = useState<boolean>(false);
@@ -89,7 +92,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       style: OPENFREEMAP_STYLES[currentStyle].url,
       center: [77.168, 28.613],
       zoom: 10.15,
-      interactive: false,
+      interactive: true,
       attributionControl: false,
     });
 
@@ -127,7 +130,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     reqId: number;
   } | null>(null);
 
-  // Load basemap texture for 3D terrain peaks mesh (Carto Dark Matter / OSM)
+  // Load basemap texture for 3D terrain peaks mesh (Carto / OSM)
   const createDelhiBasemapTexture = () => {
     const canvas = document.createElement('canvas');
     canvas.width = 1024;
@@ -135,17 +138,19 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return new THREE.Texture();
 
-    // 1. Initial responsive dark canvas background & grid
-    ctx.fillStyle = '#0B1120';
+    // Responsive light grey-white canvas background & grid
+    ctx.fillStyle = '#F1F5F9';
     ctx.fillRect(0, 0, 1024, 1024);
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+    // Subtle coordinate grid
+    ctx.strokeStyle = 'rgba(203, 213, 225, 0.4)';
     ctx.lineWidth = 1;
-    for (let i = 0; i < 1024; i += 64) {
+    for (let i = 0; i <= 1024; i += 64) {
       ctx.beginPath();
       ctx.moveTo(i, 0);
       ctx.lineTo(i, 1024);
       ctx.stroke();
+
       ctx.beginPath();
       ctx.moveTo(0, i);
       ctx.lineTo(1024, i);
@@ -153,118 +158,60 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     }
 
     const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.ClampToEdgeWrapping;
-    texture.wrapT = THREE.ClampToEdgeWrapping;
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    texture.needsUpdate = true;
 
-    // Helper: draw geographic landmarks on top of basemap
-    const drawLandmarkOverlays = () => {
-      // Yamuna River curve
-      const yamunaGeo = [
-        [28.86, 77.22], [28.76, 77.23], [28.70, 77.22], [28.64, 77.25],
-        [28.60, 77.27], [28.54, 77.31], [28.45, 77.34]
-      ];
-      ctx.beginPath();
-      yamunaGeo.forEach(([lat, lon], idx) => {
-        const [px, pz] = geoToPlane(lat, lon);
-        const cx = ((px / PLANE_SIZE) + 0.5) * 1024;
-        const cy = ((pz / PLANE_SIZE) + 0.5) * 1024;
-        if (idx === 0) ctx.moveTo(cx, cy);
-        else ctx.lineTo(cx, cy);
-      });
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.55)';
-      ctx.lineWidth = 5;
-      ctx.lineCap = 'round';
-      ctx.stroke();
+    // Async fetch OSM raster tiles for 3D mesh texture
+    const tilePromises: Promise<{ img: HTMLImageElement; x: number; y: number }>[] = [];
+    for (let tx = 0; tx < TILES_PER_AXIS; tx++) {
+      for (let ty = 0; ty < TILES_PER_AXIS; ty++) {
+        const tileX = X_MIN + tx;
+        const tileY = Y_MIN + ty;
+        const tileUrl = `https://a.basemaps.cartocdn.com/light_all/${TILE_ZOOM}/${tileX}/${tileY}.png`;
 
-      // Delhi NCT administrative boundary dashed line
-      const borderPointsGeo = [
-        [28.84, 77.08], [28.82, 77.16], [28.78, 77.24], [28.72, 77.29],
-        [28.66, 77.34], [28.58, 77.34], [28.50, 77.32], [28.43, 77.24],
-        [28.42, 77.12], [28.46, 76.99], [28.55, 76.92], [28.67, 76.92],
-        [28.78, 76.99], [28.84, 77.08]
-      ];
-      ctx.beginPath();
-      borderPointsGeo.forEach(([lat, lon], idx) => {
-        const [px, pz] = geoToPlane(lat, lon);
-        const cx = ((px / PLANE_SIZE) + 0.5) * 1024;
-        const cy = ((pz / PLANE_SIZE) + 0.5) * 1024;
-        if (idx === 0) ctx.moveTo(cx, cy);
-        else ctx.lineTo(cx, cy);
-      });
-      ctx.closePath();
-      ctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([8, 6]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      texture.needsUpdate = true;
-    };
-
-    drawLandmarkOverlays();
-
-    // 2. Asynchronously stream 16 ArcGIS Dark Canvas Map API tiles (Base + Reference labels, zero watermark)
-    let tilesLoadedCount = 0;
-    const totalTiles = TILES_PER_AXIS * TILES_PER_AXIS;
-
-    for (let row = 0; row < TILES_PER_AXIS; row++) {
-      for (let col = 0; col < TILES_PER_AXIS; col++) {
-        const tileX = X_MIN + col;
-        const tileY = Y_MIN + row;
-
-        const baseImg = new Image();
-        baseImg.crossOrigin = 'anonymous';
-        baseImg.src = `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/${TILE_ZOOM}/${tileY}/${tileX}`;
-
-        baseImg.onload = () => {
-          ctx.drawImage(baseImg, col * 256, row * 256, 256, 256);
-
-          // Overlay reference layer (roads, highways, localities & district labels)
-          const refImg = new Image();
-          refImg.crossOrigin = 'anonymous';
-          refImg.src = `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/${TILE_ZOOM}/${tileY}/${tileX}`;
-          refImg.onload = () => {
-            ctx.drawImage(refImg, col * 256, row * 256, 256, 256);
-            tilesLoadedCount++;
-            if (tilesLoadedCount === totalTiles) {
-              drawLandmarkOverlays();
-              setMapTilesLoaded(true);
-            }
-            texture.needsUpdate = true;
+        const p = new Promise<{ img: HTMLImageElement; x: number; y: number }>((resolve) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => resolve({ img, x: tx * 256, y: ty * 256 });
+          img.onerror = () => {
+            const fallback = new Image();
+            fallback.crossOrigin = 'anonymous';
+            fallback.onload = () => resolve({ img: fallback, x: tx * 256, y: ty * 256 });
+            fallback.src = `https://tile.openstreetmap.org/${TILE_ZOOM}/${tileX}/${tileY}.png`;
           };
-          refImg.onerror = () => {
-            tilesLoadedCount++;
-            texture.needsUpdate = true;
-          };
-        };
-        baseImg.onerror = () => {
-          texture.needsUpdate = true;
-        };
+          img.src = tileUrl;
+        });
+        tilePromises.push(p);
       }
     }
+
+    Promise.all(tilePromises).then((loadedTiles) => {
+      loadedTiles.forEach(({ img, x, y }) => {
+        try {
+          ctx.drawImage(img, x, y, 256, 256);
+        } catch (_) {}
+      });
+      texture.needsUpdate = true;
+    });
 
     return texture;
   };
 
+  // Three.js Scene Setup & Animation Loop
   useEffect(() => {
-    if (!canvasRef.current || !containerRef.current) return;
+    if (!containerRef.current || !canvasRef.current) return;
 
     const width = containerRef.current.clientWidth;
-    const height = Math.max(containerRef.current.clientHeight, 520);
+    const height = isFullScreen ? window.innerHeight : Math.max(containerRef.current.clientHeight, 560);
 
     // 1. Scene & Camera
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#090D16');
+    scene.background = null; // transparent canvas so OpenFreeMap shows through
 
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-    // In top view: camera looks straight down at nadir (0, 7.8, 0.001) -> (0, 0, 0)
-    // In horizontal view: perspective 3D view (0, 3.2, 5.4) -> (0, 0.4, 0)
-    const initialCamPos = viewMode === 'top' 
-      ? new THREE.Vector3(0, 7.8, 0.001) 
-      : new THREE.Vector3(0, 3.2, 5.4);
-    const initialLookAt = viewMode === 'top'
-      ? new THREE.Vector3(0, 0, 0)
-      : new THREE.Vector3(0, 0.4, 0);
+    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
+    const initialCamPos = viewMode === 'top' ? new THREE.Vector3(0, 7.8, 0.001) : new THREE.Vector3(0, 3.2, 5.4);
+    const initialLookAt = viewMode === 'top' ? new THREE.Vector3(0, 0, 0) : new THREE.Vector3(0, 0.4, 0);
     camera.position.copy(initialCamPos);
     camera.lookAt(initialLookAt);
 
@@ -277,7 +224,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-    // 3. Map API Basemap Texture
+    // 3. Basemap Texture
     const basemapTexture = createDelhiBasemapTexture();
 
     // 4. Custom GLSL Shader Material
@@ -293,7 +240,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
 
     const uniforms = {
       u_time: { value: 0.0 },
-      u_view_mode: { value: viewMode === 'top' ? 0.0 : 1.0 }, // 0.0 in top view (NO PEAKS), 1.0 in horizontal (PEAKS)
+      u_view_mode: { value: viewMode === 'top' ? 0.0 : 1.0 },
       u_height_scale: { value: 1.65 },
       u_basemap: { value: basemapTexture },
       u_wind: { value: new THREE.Vector2(-0.7, 0.5) },
@@ -318,57 +265,39 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       varying float vElevation;
       varying float vSmokeDensity;
 
-      float hash(vec2 p) {
-        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
-      }
-
-      float noise(vec2 p) {
-        vec2 i = floor(p);
-        vec2 f = fract(p);
-        vec2 u = f * f * (3.0 - 2.0 * f);
-        return mix(mix(hash(i + vec2(0.0,0.0)), hash(i + vec2(1.0,0.0)), u.x),
-                   mix(hash(i + vec2(0.0,1.0)), hash(i + vec2(1.0,1.0)), u.x), u.y);
-      }
-
-      float fbm(vec2 p) {
-        float val = 0.0;
-        float amp = 0.5;
-        for (int i = 0; i < 3; i++) {
-          val += amp * noise(p);
-          p *= 2.0;
-          amp *= 0.5;
-        }
-        return val;
-      }
-
       void main() {
         vUv = uv;
         vec3 pos = position;
 
-        // Calculate pollution intensity accumulation from all hotspots
-        float totalIntensity = 0.0;
+        float totalWeight = 0.0;
+        float weightedPM = 0.0;
+        float elevationAccum = 0.0;
+
         for (int i = 0; i < 16; i++) {
           if (i >= u_num_hotspots) break;
           vec2 hPos = u_hotspot_positions[i];
           float hVal = u_hotspot_intensities[i];
-          float dist = distance(pos.xz, hPos);
-          float radius = 0.78;
-          float falloff = exp(- (dist * dist) / (2.0 * radius * radius));
-          totalIntensity += (hVal / 320.0) * falloff;
+
+          float dist = length(pos.xz - hPos);
+          float rad = 0.95;
+          float w = max(0.0, 1.0 - (dist / rad));
+          w = w * w * (3.0 - 2.0 * w);
+
+          totalWeight += w;
+          weightedPM += hVal * w;
+
+          float bell = exp(- (dist * dist) / 0.18);
+          elevationAccum += bell * (hVal / 320.0);
         }
 
-        // Animated wind advection turbulence
-        vec2 noiseCoord = pos.xz * 2.2 - u_wind * u_time * 0.18;
-        float turb = fbm(noiseCoord) * 0.28;
+        vSmokeDensity = totalWeight > 0.0 ? clamp((weightedPM / totalWeight) / 300.0, 0.0, 1.5) : 0.0;
 
-        // Height displacement:
-        // When u_view_mode == 0.0 (Top View): elevation is strictly 0.0! NO PEAKS! Entire plane is flat.
-        // When u_view_mode == 1.0 (Horizontal View): full 3D peaks rise on the Y axis.
-        float elevation = (totalIntensity + turb * totalIntensity) * u_height_scale * u_view_mode;
-        pos.y = elevation;
+        // IN TOP VIEW (u_view_mode == 0.0): Elevation is zero (strictly flat)
+        // IN HORIZONTAL VIEW (u_view_mode == 1.0): 3D peaks extrude along Y axis
+        float finalElevation = elevationAccum * u_height_scale * u_view_mode;
+        pos.y += finalElevation;
 
-        vElevation = elevation;
-        vSmokeDensity = totalIntensity;
+        vElevation = finalElevation;
         vPosition = pos;
         vNormal = normal;
 
@@ -415,25 +344,26 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         return val;
       }
 
-      // Modern glowing CPCB dark palette
+      // Official CPCB air quality color mapping for PM2.5 pollution clouds
       vec3 getCPCBColor(float normVal) {
-        vec3 colGood = vec3(0.06, 0.72, 0.51);        // #10B981 (Emerald)
-        vec3 colMod  = vec3(0.96, 0.75, 0.14);        // #FBBF24 (Amber)
-        vec3 colPoor = vec3(0.97, 0.45, 0.08);        // #F97316 (Orange)
-        vec3 colVPoor= vec3(0.93, 0.27, 0.27);        // #EF4444 (Crimson)
-        vec3 colSev  = vec3(0.72, 0.11, 0.11);        // #B91C1C (Maroon)
+        vec3 colGood   = vec3(0.02, 0.59, 0.41); // 0-30 Good (Emerald #059669)
+        vec3 colSat    = vec3(0.06, 0.72, 0.51); // 31-60 Satisfactory (#10B981)
+        vec3 colMod    = vec3(0.85, 0.47, 0.02); // 61-90 Moderate (#D97706 Amber)
+        vec3 colPoor   = vec3(0.92, 0.35, 0.05); // 91-120 Poor (#EA580C Orange)
+        vec3 colVPoor  = vec3(0.86, 0.15, 0.15); // 121-250 Very Poor (#DC2626 Crimson)
+        vec3 colSevere = vec3(0.60, 0.11, 0.11); // >250 Severe (#991B1B Maroon)
 
-        if (normVal < 0.2) return mix(colGood, colMod, normVal / 0.2);
-        if (normVal < 0.45) return mix(colMod, colPoor, (normVal - 0.2) / 0.25);
-        if (normVal < 0.75) return mix(colPoor, colVPoor, (normVal - 0.45) / 0.3);
-        return mix(colVPoor, colSev, clamp((normVal - 0.75) / 0.25, 0.0, 1.0));
+        if (normVal < 0.15) return mix(colGood, colSat, normVal / 0.15);
+        if (normVal < 0.35) return mix(colSat, colMod, (normVal - 0.15) / 0.20);
+        if (normVal < 0.55) return mix(colMod, colPoor, (normVal - 0.35) / 0.20);
+        if (normVal < 0.75) return mix(colPoor, colVPoor, (normVal - 0.55) / 0.20);
+        return mix(colVPoor, colSevere, clamp((normVal - 0.75) / 0.25, 0.0, 1.0));
       }
 
       void main() {
-        // 1. Real Map API basemap tile underneath
         vec4 baseMapColor = texture2D(u_basemap, vUv);
 
-        // 2. Fluid advection storm clouds flowing with wind vector
+        // Fluid advection storm clouds flowing with wind vector
         vec2 advectCoord = vPosition.xz - u_wind * u_time * (0.24 + u_wind_speed * 0.14);
         float cloudTurb1 = fbm(advectCoord * 2.2);
         float cloudTurb2 = fbm(advectCoord * 5.0 + u_time * 0.06);
@@ -441,41 +371,37 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         // Composite atmospheric pollution cloud field
         float cloudField = vSmokeDensity * (0.64 + 0.58 * cloudTurb1 + 0.24 * cloudTurb2);
         float cloudAlpha = smoothstep(0.08, 0.64, cloudField);
-
         vec3 cloudColor = getCPCBColor(clamp(cloudField * 1.15, 0.0, 1.0));
 
-        // 3. Dynamic wind streamlines gliding across Delhi terrain
+        // Dynamic wind streamlines gliding across Delhi terrain
         vec2 windDir = normalize(u_wind);
         vec2 windPerp = vec2(-windDir.y, windDir.x);
         float streamBand = sin(dot(vPosition.xz, windPerp) * 14.0);
         float streamFlow = sin(dot(vPosition.xz, windDir) * 4.5 - u_time * (1.8 + u_wind_speed * 1.2));
         float windStreak = smoothstep(0.72, 0.98, streamBand * streamFlow);
-        vec3 windStreamColor = vec3(0.35, 0.88, 1.0); // Translucent luminous cyan streamline
+        vec3 windStreamColor = vec3(0.02, 0.52, 0.78); // Atmospheric cyan streamline
 
-        // 4. 3D Hillshading & Contour lines: ACTIVE ONLY IN HORIZONTAL VIEW (u_view_mode > 0.1)
+        // 3D Hillshading & Contour lines in 3D horizontal view
         if (u_view_mode > 0.1) {
           vec3 lightDir = normalize(vec3(0.3, 1.2, 0.7));
           float diff = max(dot(vNormal, lightDir), 0.35);
           cloudColor *= (0.75 + 0.35 * diff);
 
-          // Topographic contour lines on 3D peaks
           float contour = fract(vElevation * 7.5);
           if (contour < 0.08 && vElevation > 0.08) {
             cloudColor = mix(cloudColor, vec3(1.0, 1.0, 1.0), 0.45 * u_view_mode);
           }
         }
 
-        // 5. Final composite:
-        // When in Top View (u_view_mode <= 0.05):
-        // Canvas is transparent so the vector OpenFreeMap underneath shows through crisply!
-        // The translucent fluid storm clouds and wind streaks are composited cleanly.
+        // Declare final cloud alpha
+        float finalCloudAlpha = clamp(cloudAlpha * 0.72, 0.0, 0.85);
+
+        // Top View vs 3D Horizontal View compositing
         if (u_view_mode <= 0.05) {
           vec3 topColor = mix(cloudColor, windStreamColor, windStreak * 0.45);
           float topAlpha = clamp(finalCloudAlpha * 0.82 + windStreak * 0.40, 0.0, 0.90);
           gl_FragColor = vec4(topColor, topAlpha);
         } else {
-          // In 3D Horizontal View (u_view_mode > 0.05):
-          // The 3D peaks rise on the Y axis, textured with the terrain basemap + lighting + contour lines
           vec3 composited = mix(baseMapColor.rgb, cloudColor, finalCloudAlpha);
           composited = mix(composited, windStreamColor, windStreak * 0.32);
           gl_FragColor = vec4(composited, 1.0);
@@ -525,7 +451,6 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       currentLookAt.lerp(targetLookAt, 0.08);
       camera.lookAt(currentLookAt);
 
-      // Top view = strictly 0.0 (NO PEAKS, flat plane). Horizontal view = 1.0 (full 3D peaks).
       const targetViewModeVal = viewMode === 'top' ? 0.0 : 1.0;
       material.uniforms.u_view_mode.value = THREE.MathUtils.lerp(
         material.uniforms.u_view_mode.value,
@@ -538,59 +463,55 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       // Project 3D station pins to 2D screen coordinates
       const coords = hotspots.map((h) => {
         const [px, pz] = geoToPlane(h.lat, h.lon);
-        // When in Top View, u_view_mode is 0.0, so pinElevation is 0.0 (sits right on the map surface)
-        // When in Horizontal View, pins elevate to the summit of each 3D hotspot peak
-        const pinElevation = material.uniforms.u_view_mode.value * (h.pm25 / 320.0) * 1.65;
-        const v3 = new THREE.Vector3(px, pinElevation + 0.14, pz);
-        v3.project(camera);
+        let py = 0.0;
+        if (viewMode === 'horizontal') {
+          py = (h.pm25 / 320.0) * 1.65;
+        }
 
-        const sx = ((v3.x + 1) / 2) * width;
-        const sy = ((-v3.y + 1) / 2) * height;
+        const v = new THREE.Vector3(px, py, pz);
+        v.project(camera);
+
+        const currentW = isFullScreen ? window.innerWidth : (containerRef.current?.clientWidth || 800);
+        const currentH = isFullScreen ? window.innerHeight : (containerRef.current?.clientHeight || 560);
+        const sx = ((v.x + 1) * currentW) / 2;
+        const sy = ((-v.y + 1) * currentH) / 2;
+
         return { id: h.id, sx, sy, data: h };
       });
 
-      // Pin collision avoidance: stagger overlapping pins slightly
-      for (let i = 0; i < coords.length; i++) {
-        for (let j = i + 1; j < coords.length; j++) {
-          const dist = Math.hypot(coords[i].sx - coords[j].sx, coords[i].sy - coords[j].sy);
-          if (dist < 44) {
-            coords[j].sy += 22;
-          }
-        }
-      }
       setPinScreenCoords(coords);
     };
-
     animate();
 
-    // Interactive pointer orbit controls
+    // Mouse / Touch Interaction for 3D Camera Orbit
     let isDragging = false;
-    let startX = 0;
-    let startY = 0;
-    const canvasElem = canvasRef.current;
+    let prevMouseX = 0;
+    let prevMouseY = 0;
 
+    const canvasElem = canvasRef.current;
     const onPointerDown = (e: PointerEvent) => {
+      if (viewMode !== 'horizontal') return;
       isDragging = true;
-      startX = e.clientX;
-      startY = e.clientY;
+      prevMouseX = e.clientX;
+      prevMouseY = e.clientY;
       canvasElem.setPointerCapture(e.pointerId);
     };
 
     const onPointerMove = (e: PointerEvent) => {
-      if (!isDragging || !threeRef.current) return;
-      const dx = e.clientX - startX;
-      const dy = e.clientY - startY;
-      startX = e.clientX;
-      startY = e.clientY;
+      if (!isDragging || !threeRef.current || viewMode !== 'horizontal') return;
+      const deltaX = e.clientX - prevMouseX;
+      const deltaY = e.clientY - prevMouseY;
+      prevMouseX = e.clientX;
+      prevMouseY = e.clientY;
 
-      const cam = threeRef.current.camera;
-      const lookAt = threeRef.current.currentLookAt;
-      const offset = cam.position.clone().sub(lookAt);
-      const spherical = new THREE.Spherical().setFromVector3(offset);
+      const cam = threeRef.current.targetCamPos;
+      const radius = Math.sqrt(cam.x * cam.x + cam.z * cam.z);
+      let angle = Math.atan2(cam.z, cam.x);
+      angle -= deltaX * 0.008;
 
-      spherical.theta -= dx * 0.005;
-      spherical.phi = Math.max(0.12, Math.min(Math.PI / 2 - 0.05, spherical.phi - dy * 0.005));
-      threeRef.current.targetCamPos.setFromSpherical(spherical).add(lookAt);
+      cam.x = radius * Math.cos(angle);
+      cam.z = radius * Math.sin(angle);
+      cam.y = Math.max(1.2, Math.min(6.5, cam.y + deltaY * 0.01));
     };
 
     const onPointerUp = (e: PointerEvent) => {
@@ -607,8 +528,8 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
 
     const handleResize = () => {
       if (!containerRef.current || !threeRef.current) return;
-      const w = containerRef.current.clientWidth;
-      const h = Math.max(containerRef.current.clientHeight, 520);
+      const w = isFullScreen ? window.innerWidth : containerRef.current.clientWidth;
+      const h = isFullScreen ? window.innerHeight : Math.max(containerRef.current.clientHeight, 560);
       threeRef.current.camera.aspect = w / h;
       threeRef.current.camera.updateProjectionMatrix();
       threeRef.current.renderer.setSize(w, h);
@@ -628,50 +549,134 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       basemapTexture.dispose();
       threeRef.current = null;
     };
-  }, []);
+  }, [isFullScreen]);
+
+  // Moving Wind Direction Arrows Loop
+  useEffect(() => {
+    const windCanvas = windCanvasRef.current;
+    if (!windCanvas || !containerRef.current) return;
+    const ctx = windCanvas.getContext('2d');
+    if (!ctx) return;
+
+    const w = isFullScreen ? window.innerWidth : containerRef.current.clientWidth;
+    const h = isFullScreen ? window.innerHeight : containerRef.current.clientHeight;
+    windCanvas.width = w;
+    windCanvas.height = h;
+
+    // Wind blowing FROM windDirectionDeg travels TOWARDS (windDirectionDeg + 180)
+    const travelAngleRad = ((windDirectionDeg + 180) % 360) * (Math.PI / 180);
+    const dx = Math.sin(travelAngleRad);
+    const dy = -Math.cos(travelAngleRad);
+    const speedMultiplier = Math.max(windSpeedKmh / 9, 1.2);
+
+    const numArrows = 36;
+    const arrows = Array.from({ length: numArrows }, () => ({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      speed: (1.2 + Math.random() * 1.8) * speedMultiplier,
+      length: 16 + Math.random() * 12,
+      life: Math.random(),
+    }));
+
+    let windAnimId = 0;
+    const renderWind = () => {
+      windAnimId = requestAnimationFrame(renderWind);
+      ctx.clearRect(0, 0, windCanvas.width, windCanvas.height);
+
+      arrows.forEach((a) => {
+        a.x += dx * a.speed;
+        a.y += dy * a.speed;
+        a.life += 0.007;
+
+        if (a.x < -40 || a.x > windCanvas.width + 40 || a.y < -40 || a.y > windCanvas.height + 40 || a.life > 1.0) {
+          a.x = Math.random() * windCanvas.width - dx * 80;
+          a.y = Math.random() * windCanvas.height - dy * 80;
+          a.life = 0.0;
+        }
+
+        const alpha = Math.sin(a.life * Math.PI) * 0.72;
+        ctx.save();
+        ctx.translate(a.x, a.y);
+        ctx.rotate(travelAngleRad - Math.PI / 2);
+
+        ctx.strokeStyle = `rgba(2, 132, 199, ${alpha})`;
+        ctx.lineWidth = 1.8;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(-a.length / 2, 0);
+        ctx.lineTo(a.length / 2, 0);
+        ctx.lineTo(a.length / 2 - 5, -4);
+        ctx.moveTo(a.length / 2, 0);
+        ctx.lineTo(a.length / 2 - 5, 4);
+        ctx.stroke();
+
+        ctx.restore();
+      });
+    };
+    renderWind();
+
+    const handleWindResize = () => {
+      if (!windCanvas || !containerRef.current) return;
+      windCanvas.width = isFullScreen ? window.innerWidth : containerRef.current.clientWidth;
+      windCanvas.height = isFullScreen ? window.innerHeight : containerRef.current.clientHeight;
+    };
+    window.addEventListener('resize', handleWindResize);
+
+    return () => {
+      cancelAnimationFrame(windAnimId);
+      window.removeEventListener('resize', handleWindResize);
+    };
+  }, [windDirectionDeg, windSpeedKmh, isFullScreen]);
 
   // Update camera targets & uniforms when viewMode, winds, or hourOffset changes
   useEffect(() => {
     if (!threeRef.current) return;
 
     if (viewMode === 'top') {
-      // Top view camera: true nadir looking straight down over flat map with advecting clouds
       threeRef.current.targetCamPos.set(0, 7.8, 0.001);
       threeRef.current.targetLookAt.set(0, 0, 0);
     } else {
-      // Horizontal perspective camera: 3D view showing hotspot peaks rising on Y axis
       threeRef.current.targetCamPos.set(0, 3.2, 5.4);
       threeRef.current.targetLookAt.set(0, 0.4, 0);
     }
 
     const rad = (windDirectionDeg * Math.PI) / 180;
-    const windVecX = -Math.sin(rad);
-    const windVecZ = Math.cos(rad);
+    threeRef.current.material.uniforms.u_wind.value.set(Math.sin(rad), -Math.cos(rad));
+    threeRef.current.material.uniforms.u_wind_speed.value = windSpeedKmh / 20;
 
-    threeRef.current.material.uniforms.u_wind.value.set(windVecX, windVecZ);
-    threeRef.current.material.uniforms.u_wind_speed.value = Math.max(windSpeedKmh / 20.0, 0.2);
-
-    const updatedIntensities = new Float32Array(16);
+    const dynamicIntensities = new Float32Array(16);
     hotspots.slice(0, 16).forEach((h, i) => {
-      const diurnalFactor = 1.0 + 0.25 * Math.sin(((hourOffset % 24) / 24) * Math.PI * 2);
-      updatedIntensities[i] = h.pm25 * diurnalFactor;
+      const diurnalFactor = 1.0 + 0.35 * Math.sin(((hourOffset + 6) / 24) * Math.PI * 2);
+      dynamicIntensities[i] = h.pm25 * diurnalFactor;
     });
-    threeRef.current.material.uniforms.u_hotspot_intensities.value = updatedIntensities;
+    threeRef.current.material.uniforms.u_hotspot_intensities.value = dynamicIntensities;
   }, [viewMode, windDirectionDeg, windSpeedKmh, hourOffset, hotspots]);
 
   return (
     <div
       ref={containerRef}
-      style={{
-        position: 'relative',
-        width: '100%',
-        height: '560px',
-        background: '#090D16',
-        borderRadius: 'var(--radius-lg)',
-        border: '1px solid var(--border-glass)',
-        overflow: 'hidden',
-        boxShadow: 'var(--shadow-glass)',
-      }}
+      style={
+        isFullScreen
+          ? {
+              position: 'fixed',
+              inset: 0,
+              width: '100vw',
+              height: '100vh',
+              background: '#F1F5F9',
+              overflow: 'hidden',
+              zIndex: 0,
+            }
+          : {
+              position: 'relative',
+              width: '100%',
+              height: '560px',
+              background: '#F1F5F9',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--border-glass)',
+              overflow: 'hidden',
+              boxShadow: 'var(--shadow-glass)',
+            }
+      }
     >
       {/* Layer 1: OpenFreeMap Vector Basemap (MapLibre GL JS) */}
       <div
@@ -680,7 +685,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           position: 'absolute',
           inset: 0,
           zIndex: 1,
-          opacity: viewMode === 'top' ? 1.0 : 0.12,
+          opacity: viewMode === 'top' ? 1.0 : 0.15,
           transition: 'opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
           pointerEvents: viewMode === 'top' ? 'auto' : 'none',
         }}
@@ -700,21 +705,36 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         }}
       />
 
-      {/* Floating Glass Control Bar (Top Left) */}
+      {/* Layer 3: Moving Wind Direction Arrows Overlay Canvas */}
+      <canvas
+        ref={windCanvasRef}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 3,
+          width: '100%',
+          height: '100%',
+          display: 'block',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* Floating Glass Control Bar (Top Left / below header) */}
       <div
         style={{
           position: 'absolute',
-          top: '16px',
+          top: isFullScreen ? '84px' : '16px',
           left: '16px',
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          background: 'rgba(15, 23, 42, 0.85)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          border: '1px solid var(--border-glass)',
-          borderRadius: 'var(--radius-md)',
-          padding: '4px',
+          background: 'rgba(255, 255, 255, 0.90)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid #CBD5E1',
+          borderRadius: '12px',
+          padding: '5px 8px',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
           zIndex: 25,
         }}
       >
@@ -727,9 +747,9 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
             padding: '6px 12px',
             fontSize: '12px',
             fontWeight: 600,
-            borderRadius: 'var(--radius-sm)',
-            background: viewMode === 'top' ? 'var(--accent-indigo)' : 'transparent',
-            color: viewMode === 'top' ? '#FFFFFF' : 'var(--text-secondary)',
+            borderRadius: '8px',
+            background: viewMode === 'top' ? '#2563EB' : 'transparent',
+            color: viewMode === 'top' ? '#FFFFFF' : '#475569',
           }}
         >
           <LayersIcon size={14} />
@@ -745,20 +765,20 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
             padding: '6px 12px',
             fontSize: '12px',
             fontWeight: 600,
-            borderRadius: 'var(--radius-sm)',
-            background: viewMode === 'horizontal' ? 'var(--accent-indigo)' : 'transparent',
-            color: viewMode === 'horizontal' ? '#FFFFFF' : 'var(--text-secondary)',
+            borderRadius: '8px',
+            background: viewMode === 'horizontal' ? '#2563EB' : 'transparent',
+            color: viewMode === 'horizontal' ? '#FFFFFF' : '#475569',
           }}
         >
           <CompassIcon size={14} />
           <span>{lang === 'hi' ? '3D क्षैतिज चोटियाँ' : '3D Horizontal Peaks'}</span>
         </button>
 
-        <div style={{ width: '1px', height: '16px', background: 'var(--border-glass)', margin: '0 2px' }} />
+        <div style={{ width: '1px', height: '16px', background: '#CBD5E1', margin: '0 2px' }} />
 
         {/* OpenFreeMap Styles Selector */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-          {(['dark', 'positron', 'liberty', 'bright', 'fiord'] as OpenFreeMapStyle[]).map((styleKey) => (
+          {(['positron', 'bright', 'liberty', 'dark', 'fiord'] as OpenFreeMapStyle[]).map((styleKey) => (
             <button
               key={styleKey}
               onClick={() => setCurrentStyle(styleKey)}
@@ -767,10 +787,9 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
                 padding: '4px 8px',
                 fontSize: '11px',
                 fontWeight: currentStyle === styleKey ? 700 : 500,
-                borderRadius: 'var(--radius-sm)',
-                background: currentStyle === styleKey ? 'rgba(56, 189, 248, 0.22)' : 'transparent',
-                border: currentStyle === styleKey ? '1px solid var(--accent-cyan)' : '1px solid transparent',
-                color: currentStyle === styleKey ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                borderRadius: '6px',
+                background: currentStyle === styleKey ? '#0284C7' : 'transparent',
+                color: currentStyle === styleKey ? '#FFFFFF' : '#64748B',
                 cursor: 'pointer',
                 textTransform: 'capitalize',
                 transition: 'all 0.15s ease',
@@ -782,188 +801,225 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         </div>
       </div>
 
-      {/* Wind & Atmospheric HUD (Top Right) */}
+      {/* Wind & Atmospheric HUD (Top Right / below header) */}
       <div
         style={{
           position: 'absolute',
-          top: '16px',
-          right: '16px',
+          top: isFullScreen ? '84px' : '16px',
+          right: isFullScreen ? '16px' : '16px',
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
-          background: 'rgba(15, 23, 42, 0.75)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          border: '1px solid var(--border-glass)',
-          borderRadius: 'var(--radius-md)',
-          padding: '8px 14px',
+          background: 'rgba(255, 255, 255, 0.90)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid #CBD5E1',
+          borderRadius: '12px',
+          padding: '6px 14px',
           fontSize: '12px',
-          color: 'var(--text-secondary)',
-          zIndex: 15,
+          color: '#334155',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
+          zIndex: 25,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-highlight)' }}>
-          <WindIcon size={14} />
-          <span style={{ fontWeight: 600 }}>{windSpeedKmh} km/h</span>
-          <span style={{ color: 'var(--text-muted)' }}>({windDirectionDeg}°) NW</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#0284C7' }}>
+          <WindIcon size={14} color="#0284C7" />
+          <span style={{ fontWeight: 700 }}>{windSpeedKmh} km/h</span>
+          <span style={{ color: '#64748B' }}>({windDirectionDeg}°) NW → SE</span>
         </div>
 
-        <div style={{ width: '1px', height: '14px', background: 'var(--border-glass)' }} />
+        <div style={{ width: '1px', height: '14px', background: '#CBD5E1' }} />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span
             style={{
-              width: '6px',
-              height: '6px',
+              width: '8px',
+              height: '8px',
               borderRadius: '50%',
-              background: 'var(--accent-cyan)',
-              boxShadow: '0 0 8px var(--accent-cyan)',
+              background: '#0284C7',
+              boxShadow: '0 0 6px rgba(2, 132, 199, 0.6)',
             }}
           />
-          <span>{lang === 'hi' ? 'पंजाब से धुआँ प्रवाह' : 'Plume Advection Active'}</span>
+          <span style={{ fontSize: '11px', fontWeight: 600, color: '#334155' }}>
+            {lang === 'hi' ? 'हवा की धाराएँ सक्रिय' : 'Wind Arrows Active'}
+          </span>
         </div>
       </div>
 
-      {/* 2D Station Pins Overlay */}
-      {pinScreenCoords.map(({ id, sx, sy, data }) => {
-        if (sx < 20 || sx > (containerRef.current?.clientWidth || 800) - 20 || sy < 20 || sy > 540) {
-          return null;
-        }
+      {/* Collision-free Station Markers */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          zIndex: 20,
+        }}
+      >
+        {pinScreenCoords.map(({ id, sx, sy, data }) => {
+          if (sx < 20 || sx > (containerRef.current?.clientWidth || 800) - 20 || sy < 20 || sy > (containerRef.current?.clientHeight || 560) - 20) {
+            return null;
+          }
 
-        const isSelected = activePin?.id === id;
-        const verdictColor =
-          data.verdict === 'go' ? 'var(--cat-good)' : data.verdict === 'limit' ? 'var(--cat-poor)' : 'var(--cat-severe)';
+          const isHotspot = data.pm25 > 250;
+          const isSelected = activePin?.id === id;
 
-        return (
-          <div
-            key={id}
-            style={{
-              position: 'absolute',
-              left: `${sx}px`,
-              top: `${sy}px`,
-              transform: 'translate(-50%, -100%)',
-              cursor: 'pointer',
-              zIndex: isSelected ? 30 : 20,
-              pointerEvents: 'auto',
-            }}
-            onClick={() => {
-              setActivePin(isSelected ? null : data);
-            }}
-          >
-            {/* Sleek Glass Station Marker Dot */}
+          // Official CPCB category colors
+          let badgeBg = '#059669';
+          if (data.pm25 > 250) badgeBg = '#991B1B';
+          else if (data.pm25 > 120) badgeBg = '#DC2626';
+          else if (data.pm25 > 90) badgeBg = '#EA580C';
+          else if (data.pm25 > 60) badgeBg = '#D97706';
+          else if (data.pm25 > 30) badgeBg = '#10B981';
+
+          return (
             <div
+              key={id}
+              onClick={(e) => {
+                e.stopPropagation();
+                setActivePin(data);
+              }}
               style={{
+                position: 'absolute',
+                left: `${sx}px`,
+                top: `${sy}px`,
+                transform: 'translate(-50%, -100%)',
+                pointerEvents: 'auto',
+                cursor: 'pointer',
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '3px 8px',
-                background: 'rgba(15, 23, 42, 0.85)',
-                backdropFilter: 'blur(10px)',
-                WebkitBackdropFilter: 'blur(10px)',
-                border: `1px solid ${verdictColor}`,
-                borderRadius: 'var(--radius-sm)',
-                boxShadow: isSelected ? `0 0 16px ${verdictColor}66` : '0 2px 8px rgba(0,0,0,0.5)',
-                whiteSpace: 'nowrap',
-                fontSize: '11px',
-                fontWeight: 600,
-                color: '#FFFFFF',
+                transition: 'transform 0.15s ease',
               }}
             >
-              <span
+              <div
                 style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  background: verdictColor,
-                  boxShadow: `0 0 6px ${verdictColor}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  background: 'rgba(255, 255, 255, 0.95)',
+                  backdropFilter: 'blur(8px)',
+                  border: isSelected ? '2px solid #2563EB' : '1px solid #CBD5E1',
+                  borderRadius: '20px',
+                  padding: '3px 8px',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <span
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: badgeBg,
+                  }}
+                />
+                <span style={{ fontSize: '11px', fontWeight: 700, color: '#0F172A' }}>
+                  {lang === 'hi' ? data.name_hi : data.name_en}
+                </span>
+                <span
+                  style={{
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    padding: '1px 5px',
+                    borderRadius: '4px',
+                    background: badgeBg,
+                    color: '#FFFFFF',
+                  }}
+                >
+                  {Math.round(data.pm25)}
+                </span>
+              </div>
+
+              {/* Pin Pointer Stem */}
+              <div
+                style={{
+                  width: '2px',
+                  height: '8px',
+                  background: '#64748B',
                 }}
               />
-              <span>{lang === 'hi' ? data.name_hi : data.name_en}</span>
-              <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{Math.round(data.pm25)}</span>
             </div>
+          );
+        })}
+      </div>
 
-            {/* Pin Anchor Arrow */}
-            <div
-              style={{
-                width: 0,
-                height: 0,
-                borderLeft: '4px solid transparent',
-                borderRight: '4px solid transparent',
-                borderTop: `5px solid ${verdictColor}`,
-                margin: '0 auto',
-              }}
-            />
-          </div>
-        );
-      })}
-
-      {/* Selected Station Popover Card */}
+      {/* Selected Station Card Overlay */}
       {activePin && (
         <div
           style={{
             position: 'absolute',
-            bottom: '20px',
-            left: '20px',
-            background: 'rgba(15, 23, 42, 0.90)',
+            bottom: '56px',
+            left: '16px',
+            background: 'rgba(255, 255, 255, 0.95)',
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
-            border: '1px solid var(--border-glass-light)',
-            borderRadius: 'var(--radius-md)',
-            padding: '16px',
-            maxWidth: '300px',
-            zIndex: 35,
-            boxShadow: 'var(--shadow-glass)',
+            border: '1px solid #CBD5E1',
+            borderRadius: '16px',
+            padding: '16px 20px',
+            width: '290px',
+            boxShadow: '0 16px 36px rgba(0, 0, 0, 0.12)',
+            zIndex: 30,
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontWeight: 700, fontSize: '15px', color: '#FFFFFF' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A' }}>
               {lang === 'hi' ? activePin.name_hi : activePin.name_en}
-            </span>
+            </h3>
             <button
               onClick={() => setActivePin(null)}
-              style={{ fontSize: '18px', color: 'var(--text-muted)', lineHeight: 1 }}
-              aria-label="Close"
+              style={{
+                color: '#64748B',
+                padding: '4px',
+                cursor: 'pointer',
+              }}
             >
-              ×
+              ✕
             </button>
           </div>
 
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: '20px' }}>
-            <div>
-              {lang === 'hi' ? 'पूर्वानुमान' : 'Forecast'}:{' '}
-              <strong style={{ color: '#FFFFFF' }}>{Math.round(activePin.pm25)} µg/m³</strong> ({activePin.category})
-            </div>
-            <div>
-              {lang === 'hi' ? 'स्कूल परामर्श' : 'Outdoor Verdict'}:{' '}
-              <span
-                style={{
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  color:
-                    activePin.verdict === 'go'
-                      ? 'var(--cat-good)'
-                      : activePin.verdict === 'limit'
-                      ? 'var(--cat-poor)'
-                      : 'var(--cat-severe)',
-                }}
-              >
-                {activePin.verdict}
-              </span>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '8px' }}>
+            <span style={{ fontSize: '28px', fontWeight: 800, color: '#0F172A' }}>
+              {Math.round(activePin.pm25)}
+            </span>
+            <span style={{ fontSize: '12px', color: '#64748B' }}>µg/m³ PM2.5</span>
+            <span
+              style={{
+                marginLeft: 'auto',
+                fontSize: '11px',
+                fontWeight: 700,
+                padding: '3px 8px',
+                borderRadius: '6px',
+                background:
+                  activePin.pm25 > 250
+                    ? '#991B1B'
+                    : activePin.pm25 > 120
+                    ? '#DC2626'
+                    : activePin.pm25 > 90
+                    ? '#EA580C'
+                    : '#D97706',
+                color: '#FFFFFF',
+              }}
+            >
+              {activePin.category}
+            </span>
           </div>
 
           {onSelectLocality && (
             <button
-              onClick={() => onSelectLocality(activePin.id)}
+              onClick={() => {
+                onSelectLocality(activePin.id);
+                setActivePin(null);
+              }}
               style={{
                 width: '100%',
+                marginTop: '6px',
                 padding: '8px 12px',
                 fontSize: '12px',
                 fontWeight: 600,
-                background: 'var(--accent-indigo)',
+                background: '#2563EB',
                 color: '#FFFFFF',
-                borderRadius: 'var(--radius-sm)',
-                boxShadow: '0 2px 8px rgba(99, 102, 241, 0.4)',
+                borderRadius: '8px',
+                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3)',
               }}
             >
               {lang === 'hi' ? 'स्थान विवरण देखें →' : 'Select Locality & View Timetable →'}
@@ -980,49 +1036,66 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           right: '16px',
           display: 'flex',
           alignItems: 'center',
-          gap: '6px',
-          background: 'rgba(15, 23, 42, 0.85)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          border: '1px solid var(--border-glass)',
-          borderRadius: 'var(--radius-sm)',
-          padding: '4px 10px',
-          fontSize: '11px',
-          color: 'var(--text-muted)',
+          gap: '8px',
+          background: 'rgba(255, 255, 255, 0.92)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          border: '1px solid #CBD5E1',
+          borderRadius: '8px',
+          padding: '5px 12px',
+          fontSize: '11.5px',
+          color: '#475569',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
           zIndex: 25,
         }}
       >
-        <MapIcon size={12} color="var(--accent-cyan)" />
+        <OpenFreeMapLogo size={16} />
         <span>
-          <a
-            href="https://openfreemap.org/"
-            target="_blank"
-            rel="noreferrer"
-            style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}
-          >
-            OpenFreeMap
-          </a>
+          <strong style={{ color: '#0F172A' }}>OpenFreeMap</strong>
           {' © '}
           <a
             href="https://www.openmaptiles.org/"
             target="_blank"
             rel="noreferrer"
-            style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}
+            style={{ color: '#2563EB', textDecoration: 'none' }}
           >
             OpenMapTiles
           </a>
-          {' Data from '}
+          {' · '}
           <a
             href="https://www.openstreetmap.org/copyright"
             target="_blank"
             rel="noreferrer"
-            style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}
+            style={{ color: '#2563EB', textDecoration: 'none' }}
           >
             OpenStreetMap
           </a>
         </span>
+
+        {onOpenInfoModal && (
+          <button
+            onClick={onOpenInfoModal}
+            title="What is OpenFreeMap?"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '2px 8px',
+              borderRadius: '6px',
+              background: '#F1F5F9',
+              border: '1px solid #CBD5E1',
+              color: '#0F172A',
+              fontSize: '11px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              marginLeft: '4px',
+            }}
+          >
+            <InfoIcon size={12} color="#2563EB" />
+            <span>Info</span>
+          </button>
+        )}
       </div>
     </div>
   );
 };
-

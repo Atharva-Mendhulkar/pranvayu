@@ -1,6 +1,6 @@
 import React from 'react';
 import { Language, t } from '../lib/i18n';
-import { MapIcon, LayersIcon, CalendarIcon, ActivityIcon } from './Icons';
+import { MapIcon, LayersIcon, ActivityIcon, MenuIcon, OpenFreeMapLogo } from './Icons';
 
 interface HeaderProps {
   selectedLocality: string;
@@ -13,6 +13,9 @@ interface HeaderProps {
   dayDates: string[];
   currentPage: 'dashboard' | 'method';
   onPageChange: (page: 'dashboard' | 'method') => void;
+  isSideMenuOpen?: boolean;
+  onToggleSideMenu?: () => void;
+  onOpenOpenFreeMapModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -26,6 +29,9 @@ export const Header: React.FC<HeaderProps> = ({
   dayDates,
   currentPage,
   onPageChange,
+  isSideMenuOpen,
+  onToggleSideMenu,
+  onOpenOpenFreeMapModal,
 }) => {
   const getDayLabel = (dateStr: string, idx: number) => {
     if (idx === 0) return t('today', lang);
@@ -35,13 +41,13 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="header-glass">
+    <header className="header-glass-pill">
       {/* Brand Section */}
       <div className="brand-section">
         <div className="brand-logo">
-          <ActivityIcon size={22} color="var(--accent-indigo)" />
+          <ActivityIcon size={22} color="#2563EB" />
           <span>PranVayu</span>
-          <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--text-muted)' }}>
+          <span style={{ fontSize: '13px', fontWeight: 500, color: '#64748B' }}>
             (प्राणवायु)
           </span>
         </div>
@@ -56,20 +62,20 @@ export const Header: React.FC<HeaderProps> = ({
           className={`nav-page-btn ${currentPage === 'dashboard' ? 'active' : ''}`}
           onClick={() => onPageChange('dashboard')}
         >
-          <MapIcon size={15} />
-          <span>{lang === 'hi' ? 'वायु डैशबोर्ड व मानचित्र' : 'Advisory Dashboard'}</span>
+          <MapIcon size={14} />
+          <span>{lang === 'hi' ? 'वायु डैशबोर्ड' : 'Advisory Dashboard'}</span>
         </button>
 
         <button
           className={`nav-page-btn ${currentPage === 'method' ? 'active' : ''}`}
           onClick={() => onPageChange('method')}
         >
-          <LayersIcon size={15} />
+          <LayersIcon size={14} />
           <span>{lang === 'hi' ? 'प्रणाली व प्रमाण' : 'How We Estimate'}</span>
         </button>
       </div>
 
-      {/* Controls & Locality Selector */}
+      {/* Controls: Locality, Day, Lang, OpenFreeMap, Menu */}
       <div className="header-controls">
         {/* Locality Selector */}
         <select
@@ -79,7 +85,7 @@ export const Header: React.FC<HeaderProps> = ({
           aria-label="Select locality"
         >
           {localitiesList.map((loc) => (
-            <option key={loc.id} value={loc.id} style={{ background: '#0F172A', color: '#F8FAFC' }}>
+            <option key={loc.id} value={loc.id} style={{ background: '#FFFFFF', color: '#0F172A' }}>
               {lang === 'hi' ? loc.name_hi : loc.name_en}
             </option>
           ))}
@@ -117,6 +123,55 @@ export const Header: React.FC<HeaderProps> = ({
             हिन्दी
           </button>
         </div>
+
+        {/* OpenFreeMap Logo & Info Button */}
+        {onOpenOpenFreeMapModal && (
+          <button
+            onClick={onOpenOpenFreeMapModal}
+            title="OpenFreeMap Info & Styles"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '9999px',
+              background: '#F1F5F9',
+              border: '1px solid #CBD5E1',
+              color: '#1E293B',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <OpenFreeMapLogo size={16} />
+            <span>OpenFreeMap</span>
+          </button>
+        )}
+
+        {/* Collapsible Advisory Side Menu Toggle Button */}
+        {currentPage === 'dashboard' && onToggleSideMenu && (
+          <button
+            onClick={onToggleSideMenu}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '9999px',
+              background: isSideMenuOpen ? '#2563EB' : '#0F172A',
+              color: '#FFFFFF',
+              fontSize: '12.5px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <MenuIcon size={14} color="#FFFFFF" />
+            <span>{lang === 'hi' ? 'परामर्श मेनू' : 'School Timetable & Forecast'}</span>
+          </button>
+        )}
       </div>
     </header>
   );

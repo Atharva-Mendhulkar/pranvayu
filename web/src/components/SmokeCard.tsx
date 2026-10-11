@@ -29,7 +29,7 @@ export const SmokeCard: React.FC<SmokeCardProps> = ({ smoke, lang, onViewDetails
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <FlameIcon size={18} color="var(--cat-poor)" />
-          <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
             {lang === 'hi' ? 'पराली का धुआँ व उपग्रह ट्रैकिंग' : 'Regional Stubble Smoke Tracking'}
           </h3>
         </div>

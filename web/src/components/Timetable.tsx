@@ -98,7 +98,7 @@ export const Timetable: React.FC<TimetableProps> = ({
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <ClockIcon size={18} color="var(--accent-indigo)" />
-          <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#FFFFFF' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
             {lang === 'hi' ? 'स्कूल समय-सारिणी परामर्श' : 'School Day Timetable'}
           </h2>
         </div>
@@ -162,9 +162,9 @@ export const Timetable: React.FC<TimetableProps> = ({
                         onChange={(e) => handleTimeChange(v.period_id, e.target.value)}
                         onClick={(e) => e.stopPropagation()}
                         style={{
-                          background: '#0F172A',
-                          color: '#FFFFFF',
-                          border: '1px solid var(--accent-indigo)',
+                          background: '#FFFFFF',
+                          color: '#0F172A',
+                          border: '1px solid #CBD5E1',
                           borderRadius: '4px',
                           padding: '2px 4px',
                           fontSize: '12px',
@@ -176,7 +176,7 @@ export const Timetable: React.FC<TimetableProps> = ({
                   </div>
 
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: '14px', color: '#FFFFFF' }}>
+                    <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)' }}>
                       {periodLabel}
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
@@ -198,8 +198,8 @@ export const Timetable: React.FC<TimetableProps> = ({
               {isExpanded && !isEditing && (
                 <div
                   style={{
-                    background: 'rgba(15, 23, 42, 0.95)',
-                    border: '1px solid var(--border-glass-light)',
+                    background: '#F8FAFC',
+                    border: '1px solid #CBD5E1',
                     borderTop: 'none',
                     borderRadius: '0 0 var(--radius-md) var(--radius-md)',
                     padding: '12px 18px',
@@ -212,7 +212,7 @@ export const Timetable: React.FC<TimetableProps> = ({
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                     <ActivityIcon size={16} color="var(--accent-cyan)" style={{ marginTop: '2px', flexShrink: 0 }} />
                     <div>
-                      <strong style={{ color: '#FFFFFF' }}>PM2.5 ~ {v.range.p50} µg/m³</strong>{' '}
+                      <strong style={{ color: 'var(--text-primary)' }}>PM2.5 ~ {v.range.p50} µg/m³</strong>{' '}
                       (Uncertainty band: {v.range.p10} to {v.range.p90}) at {v.time}.
                       <br />
                       {v.verdict === 'skip' ? (

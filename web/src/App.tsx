@@ -5,6 +5,7 @@ import { ClientRulesConfig } from './lib/rules';
 import { Header } from './components/Header';
 import { HomeRoute } from './routes/HomeRoute';
 import { MethodRoute } from './routes/MethodRoute';
+import { OpenFreeMapModal } from './components/OpenFreeMapModal';
 import { AlertCircleIcon, InfoIcon, RefreshIcon } from './components/Icons';
 
 const LOCALITIES_LIST = [
@@ -33,6 +34,9 @@ export const App: React.FC = () => {
     return (localStorage.getItem('pv_lang') as Language) || 'en';
   });
   const [currentPage, setCurrentPage] = useState<'dashboard' | 'method'>('dashboard');
+
+  const [isSideMenuOpen, setIsSideMenuOpen] = useState<boolean>(true);
+  const [isOpenFreeMapModalOpen, setIsOpenFreeMapModalOpen] = useState<boolean>(false);
 
   const [payload, setPayload] = useState<ForecastPayload | null>(null);
   const [rulesConfig, setRulesConfig] = useState<ClientRulesConfig | null>(null);
@@ -96,10 +100,8 @@ export const App: React.FC = () => {
 
   if (isLoading || !payload) {
     return (
-      <div className="app-container">
-        <div style={{ padding: '80px 0', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          <div style={{ fontSize: '16px', fontWeight: 600 }}>Loading atmospheric air advisory intelligence...</div>
-        </div>
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', color: '#475569' }}>
+        <div style={{ fontSize: '16px', fontWeight: 600 }}>Loading atmospheric air advisory intelligence...</div>
       </div>
     );
   }
@@ -107,8 +109,8 @@ export const App: React.FC = () => {
   const dayDates = payload.days.map((d) => d.date);
 
   return (
-    <div className="app-container">
-      {/* State Debug / Notice Banners (Zero emojis) */}
+    <div style={{ position: 'relative', minHeight: '100vh', background: '#F8FAFC' }}>
+      {/* State Debug / Notice Banners */}
       {debugState === 'stale' && (
         <div className="state-banner">
           <AlertCircleIcon size={16} color="currentColor" />
@@ -134,7 +136,7 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* Top Header */}
+      {/* Floating Rounded Nav Bar */}
       <Header
         selectedLocality={selectedLocality}
         onLocalityChange={handleLocalityChange}
@@ -146,9 +148,12 @@ export const App: React.FC = () => {
         dayDates={dayDates}
         currentPage={currentPage}
         onPageChange={setCurrentPage}
+        isSideMenuOpen={isSideMenuOpen}
+        onToggleSideMenu={() => setIsSideMenuOpen(!isSideMenuOpen)}
+        onOpenOpenFreeMapModal={() => setIsOpenFreeMapModalOpen(true)}
       />
 
-      {/* Page 1: Integrated Dashboard */}
+      {/* Page 1: Integrated Dashboard with Full Screen Map & Collapsible Side Menu */}
       {currentPage === 'dashboard' && (
         <HomeRoute
           payload={payload}
@@ -161,16 +166,27 @@ export const App: React.FC = () => {
             }
           }}
           onSelectLocality={handleLocalityChange}
+          isSideMenuOpen={isSideMenuOpen}
+          onToggleSideMenu={() => setIsSideMenuOpen(!isSideMenuOpen)}
+          onOpenInfoModal={() => setIsOpenFreeMapModalOpen(true)}
         />
       )}
 
       {/* Page 2: How We Estimate & Evidence */}
       {currentPage === 'method' && (
-        <MethodRoute
-          lang={lang}
-          onBack={() => setCurrentPage('dashboard')}
-        />
+        <div className="app-container-page">
+          <MethodRoute
+            lang={lang}
+            onBack={() => setCurrentPage('dashboard')}
+          />
+        </div>
       )}
+
+      {/* OpenFreeMap Information & Documentation Modal */}
+      <OpenFreeMapModal
+        isOpen={isOpenFreeMapModalOpen}
+        onClose={() => setIsOpenFreeMapModalOpen(false)}
+      />
     </div>
   );
 };

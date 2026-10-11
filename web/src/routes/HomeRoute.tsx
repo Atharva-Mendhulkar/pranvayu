@@ -1,16 +1,10 @@
 import React, { useState } from 'react';
 import { ForecastPayload } from '../types/payload';
 import { Language } from '../lib/i18n';
-import { Headline } from '../components/Headline';
-import { Timetable } from '../components/Timetable';
-import { AirLineChart } from '../components/AirLineChart';
-import { WhyBlock } from '../components/WhyBlock';
-import { SmokeCard } from '../components/SmokeCard';
-import { GrapBanner } from '../components/GrapBanner';
-import { Footer } from '../components/Footer';
 import { DelhiFluidMap, HotspotData } from '../components/DelhiFluidMap';
+import { CollapsibleSideMenu } from '../components/CollapsibleSideMenu';
 import { generateDeterministicHeadline, ClientRulesConfig } from '../lib/rules';
-import { PlayIcon, PauseIcon, WindIcon, CompassIcon, LayersIcon, ActivityIcon } from '../components/Icons';
+import { PlayIcon, PauseIcon, WindIcon, ActivityIcon, CheckCircleIcon, ClockIcon } from '../components/Icons';
 
 interface HomeRouteProps {
   payload: ForecastPayload;
@@ -19,6 +13,9 @@ interface HomeRouteProps {
   rulesConfig: ClientRulesConfig | null;
   onNavigate: (route: string) => void;
   onSelectLocality: (locId: string) => void;
+  isSideMenuOpen: boolean;
+  onToggleSideMenu: () => void;
+  onOpenInfoModal: () => void;
 }
 
 const DEFAULT_HOTSPOTS: HotspotData[] = [
@@ -43,13 +40,16 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
   rulesConfig,
   onNavigate,
   onSelectLocality,
+  isSideMenuOpen,
+  onToggleSideMenu,
+  onOpenInfoModal,
 }) => {
   const currentDay = payload.days[selectedDayIndex] || payload.days[0];
   const [dayVerdicts, setDayVerdicts] = useState(currentDay.verdicts);
 
   // Map state
   const [mapViewMode, setMapViewMode] = useState<'top' | 'horizontal'>('top');
-  const [hourOffset, setHourOffset] = useState<number>(8); // Morning PE hour (08:00)
+  const [hourOffset, setHourOffset] = useState<number>(8); // Morning school period
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [windSpeedKmh] = useState<number>(14);
   const [windDirDeg] = useState<number>(315);
@@ -69,9 +69,6 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
 
   const headlineText = generateDeterministicHeadline(dayVerdicts, currentDay.clean_window, lang);
 
-  const smokeDriver = payload.drivers.find((d) => d.type === 'regional_smoke');
-  const smokeEta = smokeDriver?.eta || null;
-
   const formatHourLabel = (offset: number) => {
     const isToday = offset < 24;
     const hour = offset % 24;
@@ -82,26 +79,108 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
   };
 
   return (
-    <main>
-      {/* 1. Hero Atmospheric Headline & Clean Window */}
-      <Headline
-        headlineText={headlineText}
-        cleanWindow={currentDay.clean_window}
-        confidence={currentDay.confidence}
+    <main style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+      {/* 1. Full-Screen Delhi NCR Atmospheric Dynamics Map */}
+      <DelhiFluidMap
+        hotspots={DEFAULT_HOTSPOTS}
+        viewMode={mapViewMode}
+        windDirectionDeg={windDirDeg}
+        windSpeedKmh={windSpeedKmh}
+        hourOffset={hourOffset}
         lang={lang}
+        onSelectLocality={onSelectLocality}
+        onToggleViewMode={setMapViewMode}
+        isFullScreen={true}
+        onOpenInfoModal={onOpenInfoModal}
       />
 
-      {/* 2. Integrated 3D Delhi NCR Map & Fluid Simulation Hero Card */}
-      <section
+      {/* 2. Floating Atmospheric Clean Window & Headline Card (Bottom Left) */}
+      <div
         style={{
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-glass)',
-          borderRadius: 'var(--radius-lg)',
-          padding: '20px',
-          boxShadow: 'var(--shadow-glass)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          marginBottom: '24px',
+          position: 'fixed',
+          bottom: '24px',
+          left: '16px',
+          zIndex: 35,
+          maxWidth: '380px',
+          background: 'rgba(255, 255, 255, 0.94)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid #CBD5E1',
+          borderRadius: '16px',
+          padding: '16px 20px',
+          boxShadow: '0 12px 32px rgba(0, 0, 0, 0.1)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <ActivityIcon size={16} color="#2563EB" />
+          <span style={{ fontSize: '11.5px', fontWeight: 700, textTransform: 'uppercase', color: '#2563EB', letterSpacing: '0.5px' }}>
+            {payload.locality.name_en} · {currentDay.date}
+          </span>
+          <span
+            style={{
+              marginLeft: 'auto',
+              fontSize: '11px',
+              fontWeight: 700,
+              padding: '2px 8px',
+              borderRadius: '9999px',
+              background: currentDay.confidence === 'high' ? 'rgba(5, 150, 105, 0.1)' : 'rgba(217, 119, 6, 0.1)',
+              color: currentDay.confidence === 'high' ? '#059669' : '#D97706',
+              border: `1px solid ${currentDay.confidence === 'high' ? 'rgba(5, 150, 105, 0.3)' : 'rgba(217, 119, 6, 0.3)'}`,
+            }}
+          >
+            {currentDay.confidence} confidence
+          </span>
+        </div>
+
+        <h1 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', lineHeight: 1.35, marginBottom: '10px' }}>
+          {headlineText}
+        </h1>
+
+        {/* Cleanest Window of the day */}
+        {currentDay.clean_window && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              background: 'rgba(5, 150, 105, 0.08)',
+              border: '1px solid rgba(5, 150, 105, 0.25)',
+              color: '#059669',
+              fontSize: '12.5px',
+              fontWeight: 700,
+            }}
+          >
+            <ClockIcon size={14} color="#059669" />
+            <span>
+              {lang === 'hi' ? 'सबसे स्वच्छ अवधि:' : 'Cleanest Window:'}{' '}
+              {currentDay.clean_window.from} – {currentDay.clean_window.to}
+            </span>
+            <span style={{ marginLeft: 'auto', fontSize: '11px', fontWeight: 600 }}>
+              {currentDay.clean_window.kind === 'best' ? 'Optimal' : 'Least Bad'}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* 3. Floating 48-Hour Forecast Scrubber Bar (Bottom Center) */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: '24px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 35,
+          width: '460px',
+          maxWidth: 'calc(100vw - 420px)',
+          background: 'rgba(255, 255, 255, 0.94)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid #CBD5E1',
+          borderRadius: '16px',
+          padding: '12px 18px',
+          boxShadow: '0 12px 32px rgba(0, 0, 0, 0.1)',
         }}
       >
         <div
@@ -109,175 +188,85 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
+            marginBottom: '8px',
             flexWrap: 'wrap',
-            gap: '12px',
-            marginBottom: '16px',
+            gap: '8px',
           }}
         >
-          <div>
-            <h2 style={{ fontSize: '17px', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>
-              {lang === 'hi' ? 'दिल्ली एनसीआर 3D वायु व धुआँ मानचित्र' : 'Delhi NCR Atmospheric Dynamics Map'}
-            </h2>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-              {lang === 'hi'
-                ? 'शीर्ष दृश्य में वास्तविक मानचित्र पर प्रदूषण बादल व हवा, क्षैतिज दृश्य में 3D चोटियाँ'
-                : 'Top View shows real map API with wind and pollution storm clouds (no peaks); Horizontal View shows 3D peaks'}
-            </p>
-          </div>
-
-          {/* Physics Simulation Status Badge */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button
+              onClick={() => setIsPlaying(!isPlaying)}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
                 padding: '5px 12px',
-                borderRadius: 'var(--radius-full)',
-                fontSize: '11px',
-                fontWeight: 600,
-                background: 'rgba(34, 211, 238, 0.1)',
-                color: 'var(--accent-cyan)',
-                border: '1px solid rgba(34, 211, 238, 0.25)',
+                fontSize: '12px',
+                fontWeight: 700,
+                background: isPlaying ? '#F1F5F9' : '#2563EB',
+                color: isPlaying ? '#0F172A' : '#FFFFFF',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                border: isPlaying ? '1px solid #CBD5E1' : 'none',
               }}
             >
-              <ActivityIcon size={12} color="var(--accent-cyan)" />
-              {lang === 'hi' ? 'सक्रिय 3D भौतिकी अनुकरण' : 'Physics Simulation Active'}
+              {isPlaying ? <PauseIcon size={12} color="#0F172A" /> : <PlayIcon size={12} color="#FFFFFF" />}
+              <span>{isPlaying ? (lang === 'hi' ? 'रोकें' : 'Pause') : (lang === 'hi' ? 'चलाएँ' : 'Play 48h')}</span>
+            </button>
+
+            <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#0F172A' }}>
+              {formatHourLabel(hourOffset)}
             </span>
           </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: '#64748B' }}>
+            <WindIcon size={13} color="#0284C7" />
+            <span>14 km/h NW → SE stubble corridor</span>
+          </div>
         </div>
 
-        {/* 3D WebGL Canvas */}
-        <DelhiFluidMap
-          hotspots={DEFAULT_HOTSPOTS}
-          viewMode={mapViewMode}
-          windDirectionDeg={windDirDeg}
-          windSpeedKmh={windSpeedKmh}
-          hourOffset={hourOffset}
-          lang={lang}
-          onSelectLocality={onSelectLocality}
-          onToggleViewMode={setMapViewMode}
+        <input
+          type="range"
+          min={0}
+          max={47}
+          value={hourOffset}
+          onChange={(e) => setHourOffset(Number(e.target.value))}
+          style={{
+            width: '100%',
+            height: '5px',
+            cursor: 'pointer',
+            accentColor: '#2563EB',
+          }}
+          aria-label="Forecast hour scrubber"
         />
 
-        {/* 48-Hour Interactive Scrubber */}
         <div
           style={{
-            marginTop: '16px',
-            padding: '12px 16px',
-            background: 'rgba(255, 255, 255, 0.02)',
-            border: '1px solid var(--border-glass)',
-            borderRadius: 'var(--radius-md)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: '11px',
+            color: '#64748B',
+            marginTop: '4px',
           }}
         >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '10px',
-              flexWrap: 'wrap',
-              gap: '8px',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <button
-                onClick={() => setIsPlaying(!isPlaying)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 14px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  background: isPlaying ? 'rgba(255, 255, 255, 0.1)' : 'var(--accent-indigo)',
-                  color: '#FFFFFF',
-                  borderRadius: 'var(--radius-sm)',
-                  cursor: 'pointer',
-                }}
-              >
-                {isPlaying ? <PauseIcon size={12} /> : <PlayIcon size={12} />}
-                <span>{isPlaying ? (lang === 'hi' ? 'रोकें' : 'Pause') : (lang === 'hi' ? 'चलाएँ' : 'Play 48h')}</span>
-              </button>
-
-              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                {formatHourLabel(hourOffset)}
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-muted)' }}>
-              <WindIcon size={13} color="var(--accent-cyan)" />
-              <span>NW → SE (14 km/h stubble corridor)</span>
-            </div>
-          </div>
-
-          <input
-            type="range"
-            min={0}
-            max={47}
-            value={hourOffset}
-            onChange={(e) => setHourOffset(Number(e.target.value))}
-            style={{
-              width: '100%',
-              height: '5px',
-              cursor: 'pointer',
-              accentColor: 'var(--accent-indigo)',
-            }}
-            aria-label="Forecast hour scrubber"
-          />
-
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: '11px',
-              color: 'var(--text-muted)',
-              marginTop: '4px',
-            }}
-          >
-            <span>Now (+0h)</span>
-            <span>Tomorrow Morning (+24h)</span>
-            <span>Forecast Horizon (+48h)</span>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. Integrated 2-Column Responsive Dashboard */}
-      <div className="dashboard-grid-2col">
-        {/* Left Column: School Timetable & Stubble Smoke Tracker */}
-        <div>
-          <Timetable
-            verdicts={dayVerdicts}
-            series={payload.series}
-            dateStr={currentDay.date}
-            confidence={currentDay.confidence}
-            lang={lang}
-            rulesConfig={rulesConfig}
-            onVerdictsChange={setDayVerdicts}
-          />
-
-          <SmokeCard
-            smoke={payload.smoke}
-            lang={lang}
-            onViewDetails={() => onNavigate('method')}
-          />
-        </div>
-
-        {/* Right Column: 48h Air Line Chart + Drivers + GRAP Banner */}
-        <div>
-          <AirLineChart
-            series={payload.series}
-            cleanWindow={currentDay.clean_window}
-            smokeEta={smokeEta}
-            lang={lang}
-          />
-
-          <WhyBlock drivers={payload.drivers} lang={lang} />
-
-          <GrapBanner grap={payload.grap} lang={lang} />
+          <span>Now (+0h)</span>
+          <span>Tomorrow (+24h)</span>
+          <span>+48h</span>
         </div>
       </div>
 
-      <Footer payload={payload} lang={lang} onNavigate={onNavigate} />
+      {/* 4. Collapsible Side Menu on the Side */}
+      <CollapsibleSideMenu
+        isOpen={isSideMenuOpen}
+        onToggle={onToggleSideMenu}
+        payload={payload}
+        selectedDayIndex={selectedDayIndex}
+        dayVerdicts={dayVerdicts}
+        onVerdictsChange={setDayVerdicts}
+        lang={lang}
+        rulesConfig={rulesConfig}
+        onNavigate={onNavigate}
+      />
     </main>
   );
 };

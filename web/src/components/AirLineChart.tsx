@@ -82,7 +82,7 @@ export const AirLineChart: React.FC<AirLineChartProps> = ({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <BarChartIcon size={18} color="var(--accent-cyan)" />
-          <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF' }}>
+          <h2 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
             {lang === 'hi' ? '48-घंटे PM2.5 वायु रेखा' : '48-Hour Atmospheric Forecast'}
           </h2>
         </div>

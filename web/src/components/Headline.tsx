@@ -25,7 +25,7 @@ export const Headline: React.FC<HeadlineProps> = ({
           fontSize: '26px',
           lineHeight: '34px',
           fontWeight: 800,
-          color: '#FFFFFF',
+          color: 'var(--text-primary)',
           letterSpacing: '-0.5px',
           marginBottom: '12px',
         }}

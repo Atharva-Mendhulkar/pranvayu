@@ -59,3 +59,12 @@
 - Fixed `make evaluate` to set `PYTHONPATH=backend` so replay evaluation runs directly from repository root.
 - Verified `make test`, `make lint`, `make run-local`, `make evaluate`.
 
+### 2026-10-11 18:30 IST — Grey-White UI Overhaul, Full-Screen Map & Collapsible Advisory Menu
+- Switched UI palette to clean grey-white glassmorphism with high-contrast slate `#0F172A` text on frosted white glass (`rgba(255, 255, 255, 0.92)`).
+- Made the Atmospheric Dynamics Map cover the entire viewport in full-screen mode.
+- Added animated moving wind direction arrows gliding across the city following the wind vector.
+- Mapped pollution fluid clouds in GLSL fragment shader directly to official 6 CPCB PM2.5 color categories (emerald green, mint, amber, orange, crimson, deep maroon).
+- Built slide-out Collapsible Advisory Side Menu holding School Day Timetable, Stubble Smoke Tracking, 48-Hour Forecast, Why block, and CAQM GRAP banner.
+- Re-architected top navigation into a floating rounded corner glassmorphic pill nav bar.
+- Added OpenFreeMap documentation and style modal with links to GitHub, X, Bluesky, and Zsolt Ero's project background.
+

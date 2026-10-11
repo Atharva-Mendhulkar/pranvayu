@@ -39,7 +39,7 @@ export const WhyBlock: React.FC<WhyBlockProps> = ({ drivers, lang }) => {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <InfoIcon size={18} color="var(--accent-indigo)" />
-          <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
+          <h2 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
             {t('whyTitle', lang)}
           </h2>
         </div>

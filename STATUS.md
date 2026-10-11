@@ -38,19 +38,23 @@ Phase: Map API Integration & Top View Flat Cloud Visualization Complete
     - 3D perspective camera `(0, 3.2, 5.4)` looking at `(0, 0.4, 0)`.
     - Dramatic 3D peaks rising along the Y-axis (`u_height_scale: 1.65`) from hotspot stations according to PM2.5 severity.
     - Luminous topographic contour rings wrap around each peak summit with 3D directional hillshading.
-  - **Controls & HUD**:
-    - Mode toggle buttons: `Top View (Map & Clouds)` and `3D Horizontal Peaks`.
-    - Style selector: Quick switch between 5 OpenFreeMap vector styles.
-    - Map attribution badge: Clean links to OpenFreeMap, OpenMapTiles, and OpenStreetMap.
-    - Atmospheric HUD showing wind speed, direction (`14 km/h (315°) NW`), and active plume advection.
-  - **Integrated Pages**:
-    - Page 1: Advisory Dashboard with Map, School Day Timetable, Cleanest Window, 48-Hour Forecast, Regional Stubble Smoke tracking.
-    - Page 2: How We Estimate with 4-step pipeline, mathematical models (CAMS rolling bias, 24-member ensemble, SII), M1–M5 replay scorecard, and data sources.
+  - **Grey-White Glassmorphism UI**:
+    - High-contrast, clean slate `#0F172A` typography on light frosted glass surfaces (`#F8FAFC`, `rgba(255, 255, 255, 0.92)`).
+    - Floating rounded pill nav bar (`border-radius: 9999px`) housing brand logo, page switcher, locality picker, today/tomorrow toggle, and language switch.
+  - **Full-Screen Atmospheric Dynamics Map**:
+    - Map covers 100% of the viewport as the ambient interactive background.
+    - Moving wind direction arrows layer (aerodynamic animated arrows gliding in real time according to wind vector).
+    - Fluid pollution clouds directly correlated to official 6 CPCB PM2.5 color grades (emerald green, mint, amber, orange, crimson, deep maroon).
+  - **Collapsible Advisory Side Menu**:
+    - Smooth slide-out glass drawer holding the School Day Timetable (with interactive time adjustment), Regional Stubble Smoke Tracking (NASA VIIRS + 24-member ensemble), 48-Hour Atmospheric Forecast chart, Why explanation block, and official CAQM GRAP Stage II banner.
+  - **OpenFreeMap Integration & Documentation Modal**:
+    - Added maps logo, OpenFreeMap links (GitHub `openfreemap` & `openfreemap-styles`, X `@hyperknot` & `@OpenFreeMapOrg`, Bluesky `@hyperknot.com`), full documentation, and style selectors.
 - **Tooling & Verification**:
   - `make test` (10/10 pytest unit tests passing).
   - `make lint` (ruff and TypeScript build passing with 0 errors).
   - `make run-local` (all 12 mock payloads verified and written).
-  - `make evaluate` (evaluation metrics M1–M5 verified with PYTHONPATH configured).
+  - `make evaluate` (evaluation metrics M1–M5 verified).
+  - Dev server live and verified on port 3000.
 
 ## Next
 - Git commit changes.

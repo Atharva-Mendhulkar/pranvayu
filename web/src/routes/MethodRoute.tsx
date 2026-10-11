@@ -32,7 +32,7 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
           style={{
             fontSize: '28px',
             fontWeight: 800,
-            color: '#FFFFFF',
+            color: 'var(--text-primary)',
             letterSpacing: '-0.5px',
             marginBottom: '8px',
           }}
@@ -50,7 +50,7 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
       <section className="glass-panel" style={{ padding: '24px', marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
           <LayersIcon size={20} color="var(--accent-indigo)" />
-          <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#FFFFFF' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
             {lang === 'hi' ? '1. संपूर्ण डेटा प्रवाह और मॉडलिंग पाइपलाइन' : '1. End-to-End Computational Pipeline'}
           </h2>
         </div>
@@ -67,7 +67,7 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent-cyan)', textTransform: 'uppercase', marginBottom: '6px' }}>
               Step 01 • Ingestion
             </div>
-            <div style={{ fontWeight: 600, color: '#FFFFFF', fontSize: '14px', marginBottom: '6px' }}>
+            <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '14px', marginBottom: '6px' }}>
               Multi-Source Data Feeds
             </div>
             <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '18px' }}>
@@ -79,7 +79,7 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent-indigo)', textTransform: 'uppercase', marginBottom: '6px' }}>
               Step 02 • Calibration
             </div>
-            <div style={{ fontWeight: 600, color: '#FFFFFF', fontSize: '14px', marginBottom: '6px' }}>
+            <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '14px', marginBottom: '6px' }}>
               Rolling Bias Ratio (ρ)
             </div>
             <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '18px' }}>
@@ -91,7 +91,7 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent-purple)', textTransform: 'uppercase', marginBottom: '6px' }}>
               Step 03 • Physics
             </div>
-            <div style={{ fontWeight: 600, color: '#FFFFFF', fontSize: '14px', marginBottom: '6px' }}>
+            <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '14px', marginBottom: '6px' }}>
               24-Member Trajectory Ensemble
             </div>
             <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '18px' }}>
@@ -103,7 +103,7 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--cat-good)', textTransform: 'uppercase', marginBottom: '6px' }}>
               Step 04 • Decision
             </div>
-            <div style={{ fontWeight: 600, color: '#FFFFFF', fontSize: '14px', marginBottom: '6px' }}>
+            <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '14px', marginBottom: '6px' }}>
               Deterministic Verdicts
             </div>
             <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '18px' }}>
@@ -117,7 +117,7 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
       <section className="glass-panel" style={{ padding: '24px', marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
           <ActivityIcon size={20} color="var(--accent-cyan)" />
-          <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#FFFFFF' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
             {lang === 'hi' ? '2. कोर गणितीय व भौतिकी मॉडल' : '2. The Core Mathematical Models'}
           </h2>
         </div>
@@ -125,7 +125,7 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Model A */}
           <div className="glass-card" style={{ padding: '18px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', marginBottom: '6px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
               Model A: CAMS Rolling Bias Correction & Uncertainty Bands
             </h3>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '20px', marginBottom: '10px' }}>
@@ -152,7 +152,7 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
 
           {/* Model B */}
           <div className="glass-card" style={{ padding: '18px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', marginBottom: '6px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
               Model B: 24-Member 2nd-Order Backward Trajectory Integration
             </h3>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '20px', marginBottom: '10px' }}>
@@ -181,7 +181,7 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
 
           {/* Model C */}
           <div className="glass-card" style={{ padding: '18px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', marginBottom: '6px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
               Model C: Smoke Influence Index (SII) Scoring
             </h3>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '20px', marginBottom: '10px' }}>
@@ -212,7 +212,7 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
       <section className="glass-panel" style={{ padding: '24px', marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
           <BarChartIcon size={20} color="var(--accent-purple)" />
-          <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#FFFFFF' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
             {lang === 'hi' ? '3. ऐतिहासिक सत्यापन और पूर्व-पंजीकृत मेट्रिक्स (Replay Evaluation)' : '3. Pre-Registered Historical Replay Evaluation'}
           </h2>
         </div>
@@ -241,35 +241,35 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
             </thead>
             <tbody>
               <tr style={{ borderBottom: '1px solid var(--border-glass)' }}>
-                <td style={{ padding: '10px', fontWeight: 600, color: '#FFFFFF' }}>M1</td>
+                <td style={{ padding: '10px', fontWeight: 600, color: 'var(--text-primary)' }}>M1</td>
                 <td style={{ padding: '10px', color: 'var(--text-secondary)' }}>Next-Day PM2.5 Mean Absolute Error (MAE)</td>
                 <td style={{ padding: '10px', color: 'var(--cat-good)', fontWeight: 600 }}>24.6 µg/m³</td>
                 <td style={{ padding: '10px', color: 'var(--text-muted)' }}>42.1 µg/m³ (Raw CAMS)</td>
                 <td style={{ padding: '10px', color: 'var(--cat-good)' }}>-17.5 µg/m³ (-41.5%)</td>
               </tr>
               <tr style={{ borderBottom: '1px solid var(--border-glass)' }}>
-                <td style={{ padding: '10px', fontWeight: 600, color: '#FFFFFF' }}>M2</td>
+                <td style={{ padding: '10px', fontWeight: 600, color: 'var(--text-primary)' }}>M2</td>
                 <td style={{ padding: '10px', color: 'var(--text-secondary)' }}>Cleanest Outdoor Window Match Accuracy</td>
                 <td style={{ padding: '10px', color: 'var(--cat-good)', fontWeight: 600 }}>88.2%</td>
                 <td style={{ padding: '10px', color: 'var(--text-muted)' }}>61.4% (Persistence)</td>
                 <td style={{ padding: '10px', color: 'var(--cat-good)' }}>+26.8%</td>
               </tr>
               <tr style={{ borderBottom: '1px solid var(--border-glass)' }}>
-                <td style={{ padding: '10px', fontWeight: 600, color: '#FFFFFF' }}>M3</td>
+                <td style={{ padding: '10px', fontWeight: 600, color: 'var(--text-primary)' }}>M3</td>
                 <td style={{ padding: '10px', color: 'var(--text-secondary)' }}>Smoke Arrival Window Accuracy (±3 hours)</td>
                 <td style={{ padding: '10px', color: 'var(--cat-good)', fontWeight: 600 }}>76.4%</td>
                 <td style={{ padding: '10px', color: 'var(--text-muted)' }}>48.0% (Wind Direction only)</td>
                 <td style={{ padding: '10px', color: 'var(--cat-good)' }}>+28.4%</td>
               </tr>
               <tr style={{ borderBottom: '1px solid var(--border-glass)' }}>
-                <td style={{ padding: '10px', fontWeight: 600, color: '#FFFFFF' }}>M4</td>
+                <td style={{ padding: '10px', fontWeight: 600, color: 'var(--text-primary)' }}>M4</td>
                 <td style={{ padding: '10px', color: 'var(--text-secondary)' }}>False Skip Alarm Rate on Good/Moderate Days</td>
                 <td style={{ padding: '10px', color: 'var(--cat-good)', fontWeight: 600 }}>4.8%</td>
                 <td style={{ padding: '10px', color: 'var(--text-muted)' }}>18.2% (Static threshold)</td>
                 <td style={{ padding: '10px', color: 'var(--cat-good)' }}>-13.4%</td>
               </tr>
               <tr>
-                <td style={{ padding: '10px', fontWeight: 600, color: '#FFFFFF' }}>M5</td>
+                <td style={{ padding: '10px', fontWeight: 600, color: 'var(--text-primary)' }}>M5</td>
                 <td style={{ padding: '10px', color: 'var(--text-secondary)' }}>Uncertainty Band Coverage (p10–p90)</td>
                 <td style={{ padding: '10px', color: 'var(--cat-good)', fontWeight: 600 }}>82.1%</td>
                 <td style={{ padding: '10px', color: 'var(--text-muted)' }}>Target: 80.0%</td>
@@ -305,7 +305,7 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
       <section className="glass-panel" style={{ padding: '24px', marginBottom: '40px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
           <ShieldCheckIcon size={20} color="var(--cat-good)" />
-          <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#FFFFFF' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
             {lang === 'hi' ? '4. डेटा स्रोत और कानूनी अस्वीकरण' : '4. Data Sources, Attributions & Legal Disclaimer'}
           </h2>
         </div>
