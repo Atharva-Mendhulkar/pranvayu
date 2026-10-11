@@ -8,7 +8,7 @@
 import { MonitoringStation } from '../types/intelligence';
 
 export interface PaletteTier {
-  id: 'very_low' | 'low' | 'moderate' | 'elevated' | 'high' | 'very_high' | 'extreme';
+  id: 'very_low' | 'low' | 'moderate' | 'elevated' | 'high' | 'very_high' | 'extreme' | 'missing';
   minPm: number;
   maxPm: number;
   label_en: string;
@@ -34,8 +34,8 @@ export const PALETTE_TIERS: PaletteTier[] = [
     label_en: 'Very Low',
     label_hi: 'अति निम्न',
     hex: '#18382E',
-    rgb: [0.094, 0.220, 0.180],
-    alpha: 0.28,
+    rgb: [0.098, 0.280, 0.210],
+    alpha: 0.44,
     badge: 'badge-very-low',
   },
   {
@@ -45,8 +45,8 @@ export const PALETTE_TIERS: PaletteTier[] = [
     label_en: 'Low',
     label_hi: 'निम्न',
     hex: '#2F7656',
-    rgb: [0.184, 0.463, 0.337],
-    alpha: 0.34,
+    rgb: [0.184, 0.495, 0.350],
+    alpha: 0.50,
     badge: 'badge-low',
   },
   {
@@ -57,7 +57,7 @@ export const PALETTE_TIERS: PaletteTier[] = [
     label_hi: 'मध्यम',
     hex: '#9AAB55',
     rgb: [0.604, 0.671, 0.333],
-    alpha: 0.42,
+    alpha: 0.56,
     badge: 'badge-moderate',
   },
   {
@@ -68,7 +68,7 @@ export const PALETTE_TIERS: PaletteTier[] = [
     label_hi: 'सघन',
     hex: '#D2A34D',
     rgb: [0.824, 0.639, 0.302],
-    alpha: 0.50,
+    alpha: 0.62,
     badge: 'badge-elevated',
   },
   {
@@ -79,7 +79,7 @@ export const PALETTE_TIERS: PaletteTier[] = [
     label_hi: 'उच्च',
     hex: '#E77A43',
     rgb: [0.906, 0.478, 0.263],
-    alpha: 0.58,
+    alpha: 0.68,
     badge: 'badge-high',
   },
   {
@@ -90,7 +90,7 @@ export const PALETTE_TIERS: PaletteTier[] = [
     label_hi: 'अत्यंत उच्च',
     hex: '#D94E49',
     rgb: [0.851, 0.306, 0.286],
-    alpha: 0.65,
+    alpha: 0.74,
     badge: 'badge-very-high',
   },
   {
@@ -101,21 +101,33 @@ export const PALETTE_TIERS: PaletteTier[] = [
     label_hi: 'गंभीर',
     hex: '#842F43',
     rgb: [0.518, 0.184, 0.263],
-    alpha: 0.72,
+    alpha: 0.80,
     badge: 'badge-extreme',
+  },
+  {
+    id: 'missing',
+    minPm: -1.0,
+    maxPm: -1.0,
+    label_en: 'Insufficient Coverage',
+    label_hi: 'अपर्याप्त डेटा',
+    hex: '#1C242D',
+    rgb: [0.110, 0.141, 0.176],
+    alpha: 0.52,
+    badge: 'badge-missing',
   },
 ];
 
 export interface InspectedLocation {
   lat: number;
   lon: number;
-  estimatedPm25: number;
-  uncertaintySpread: number;
+  estimatedPm25: number | null;
+  validity: 'valid' | 'uncertain' | 'missing';
+  uncertaintySpread: number | null;
   tier: PaletteTier;
   components: {
-    background: number;
-    smokeAdvection: number;
-    urbanDispersion: number;
+    background: number | null;
+    smokeAdvection: number | null;
+    urbanDispersion: number | null;
   };
   nearestStation: {
     id: string;
@@ -131,6 +143,7 @@ export interface InspectedLocation {
   isWithinDomain: boolean;
 }
 
+
 export function isWithinDomain(lat: number, lon: number): boolean {
   return (
     lat >= DELHI_NCR_BOUNDS.south &&
@@ -140,14 +153,18 @@ export function isWithinDomain(lat: number, lon: number): boolean {
   );
 }
 
-export function getPaletteTier(pm25: number): PaletteTier {
+export function getPaletteTier(pm25: number | null): PaletteTier {
+  if (pm25 === null || isNaN(pm25)) {
+    return PALETTE_TIERS.find((t) => t.id === 'missing') || PALETTE_TIERS[PALETTE_TIERS.length - 1];
+  }
   const clamped = Math.max(0, pm25);
   for (let i = 0; i < PALETTE_TIERS.length; i++) {
+    if (PALETTE_TIERS[i].id === 'missing') continue;
     if (clamped <= PALETTE_TIERS[i].maxPm) {
       return PALETTE_TIERS[i];
     }
   }
-  return PALETTE_TIERS[PALETTE_TIERS.length - 1];
+  return PALETTE_TIERS[PALETTE_TIERS.length - 2];
 }
 
 export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -182,15 +199,17 @@ export function evaluateContinuousField(
   windDirDeg: number = 315,
   hotspots: Array<{ lat: number; lon: number; pm25: number }> = []
 ): {
-  pm25: number;
-  components: { background: number; smokeAdvection: number; urbanDispersion: number };
+  pm25: number | null;
+  components: { background: number | null; smokeAdvection: number | null; urbanDispersion: number | null };
   isWithin: boolean;
+  validity: 'valid' | 'uncertain' | 'missing';
 } {
   if (!isWithinDomain(lat, lon)) {
     return {
-      pm25: 0,
-      components: { background: 0, smokeAdvection: 0, urbanDispersion: 0 },
+      pm25: null,
+      components: { background: null, smokeAdvection: null, urbanDispersion: null },
       isWithin: false,
+      validity: 'missing',
     };
   }
 
@@ -281,6 +300,7 @@ export function evaluateContinuousField(
       urbanDispersion: Math.round(urbanDispersion),
     },
     isWithin: true,
+    validity: 'valid',
   };
 }
 
@@ -316,32 +336,39 @@ export function inspectMapCoordinate(
   }
 
   const distKm = Math.round(minDistanceKm * 10) / 10;
-  const uncertainty = computeSpatialUncertainty(lat, lon, distKm);
+  const uncertainty = isWithin ? computeSpatialUncertainty(lat, lon, distKm) : null;
   const tier = getPaletteTier(evalResult.pm25);
 
+  let validity: 'valid' | 'uncertain' | 'missing' = 'valid';
   let provenance: 'direct_obs' | 'physics_estimate' | 'regional_extrapolation' | 'out_of_domain' =
     'physics_estimate';
   let provenanceLabel_en = 'Physics-Informed Spatial Estimate (1.2 km PINN)';
   let provenanceLabel_hi = 'भौतिकी-आधारित स्थानिक अनुमान (1.2 किमी ग्रिड)';
 
   if (!isWithin) {
+    validity = 'missing';
     provenance = 'out_of_domain';
-    provenanceLabel_en = 'Out of Domain / Insufficient Boundary Data';
-    provenanceLabel_hi = 'डोमेन से बाहर / अपर्याप्त सीमा डेटा';
+    provenanceLabel_en = 'An estimate is unavailable at this location for the selected horizon.';
+    provenanceLabel_hi = 'चयनित समय क्षितिज के लिए इस स्थान पर अनुमान उपलब्ध नहीं है।';
   } else if (distKm <= 1.2) {
+    validity = 'valid';
     provenance = 'direct_obs';
     provenanceLabel_en = `Proximate Ground Observation Anchor (${distKm} km)`;
     provenanceLabel_hi = `निकटतम भूतल अवलोकन आधार (${distKm} किमी)`;
-  } else if (distKm > 12.0) {
+  } else if (distKm > 18.0) {
+    validity = 'uncertain';
     provenance = 'regional_extrapolation';
-    provenanceLabel_en = `Physics-Informed Regional Extrapolation (${distKm} km from sensor)`;
-    provenanceLabel_hi = `क्षेत्रीय भौतिकी बाह्यवेशन (सेंसर से ${distKm} किमी)`;
+    provenanceLabel_en = `Elevated Spatial Uncertainty (${distKm} km from sensor)`;
+    provenanceLabel_hi = `उच्च स्थानिक अनिश्चितता (सेंसर से ${distKm} किमी)`;
+  } else {
+    validity = 'valid';
   }
 
   return {
     lat: Math.round(lat * 10000) / 10000,
     lon: Math.round(lon * 10000) / 10000,
     estimatedPm25: evalResult.pm25,
+    validity,
     uncertaintySpread: uncertainty,
     tier,
     components: evalResult.components,

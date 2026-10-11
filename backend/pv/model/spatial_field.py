@@ -96,8 +96,19 @@ PALETTE_TIERS = [
         "label_hi": "गंभीर",
         "hex": "#842F43",
         "rgb": (0.518, 0.184, 0.263),
-        "alpha": 0.72,
+        "alpha": 0.78,
         "badge": "badge-extreme",
+    },
+    {
+        "id": "missing",
+        "min_pm": -1.0,
+        "max_pm": -1.0,
+        "label_en": "Insufficient Coverage",
+        "label_hi": "अपर्याप्त डेटा",
+        "hex": "#1C242D",
+        "rgb": (0.110, 0.141, 0.176),
+        "alpha": 0.50,
+        "badge": "badge-missing",
     },
 ]
 
@@ -110,13 +121,31 @@ def is_within_domain(lat: float, lon: float) -> bool:
     )
 
 
-def get_continuous_palette_tier(pm25: float) -> Dict[str, Any]:
-    """Returns the matching 7-tier palette entry for a given PM2.5 value."""
+def classify_cell_validity(lat: float, lon: float, nearest_station_distance_km: float = 0.0) -> str:
+    """
+    Classifies a coordinate as 'valid', 'uncertain', or 'missing'.
+    - 'missing': coordinate is outside the supported Delhi NCR model domain.
+    - 'uncertain': coordinate is within domain but far from ground monitors (>18 km).
+    - 'valid': defensible physics-informed estimate within close-to-moderate sensor proximity.
+    """
+    if not is_within_domain(lat, lon):
+        return "missing"
+    if nearest_station_distance_km > 18.0:
+        return "uncertain"
+    return "valid"
+
+
+def get_continuous_palette_tier(pm25: Optional[float]) -> Dict[str, Any]:
+    """Returns the matching 7-tier palette entry for a given PM2.5 value, or missing tier."""
+    if pm25 is None or (isinstance(pm25, float) and math.isnan(pm25)):
+        return next(t for t in PALETTE_TIERS if t["id"] == "missing")
     clamped = max(0.0, pm25)
     for tier in PALETTE_TIERS:
+        if tier["id"] == "missing":
+            continue
         if clamped <= tier["max_pm"]:
             return tier
-    return PALETTE_TIERS[-1]
+    return PALETTE_TIERS[-2]  # extreme
 
 
 def compute_haversine_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -152,18 +181,20 @@ def evaluate_continuous_pm25(
     wind_speed_kmh: float = 14.0,
     wind_dir_deg: float = 315.0,
     hotspots: Optional[List[Dict[str, Any]]] = None,
-) -> Tuple[float, Dict[str, Any]]:
+) -> Tuple[Optional[float], Dict[str, Any]]:
     """
     Evaluates the continuous physics-informed PM2.5 concentration at an arbitrary coordinate.
-    Returns (total_pm25, component_breakdown).
+    Returns (total_pm25, component_breakdown). If outside domain, total_pm25 is None.
     """
     if not is_within_domain(lat, lon):
-        return 0.0, {
+        return None, {
             "status": "out_of_domain",
-            "background": 0.0,
-            "smoke_advection": 0.0,
-            "urban_dispersion": 0.0,
+            "validity": "missing",
+            "background": None,
+            "smoke_advection": None,
+            "urban_dispersion": None,
         }
+
 
     # 1. Diurnal modulation factor
     diurnal_mod = 0.92 + 0.22 * math.sin((hour_offset - 8.0) * 0.26)

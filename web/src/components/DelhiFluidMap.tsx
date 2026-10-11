@@ -563,9 +563,9 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       varying vec2 vUv;
 
       // 7-Tier Scientific Dark-Map Palette
-      vec4 evaluateContinuousPollutionColor(float pmVal, float domainMask) {
-        vec3 cVLow  = vec3(0.094, 0.220, 0.180); // #18382E Deep Forest Emerald
-        vec3 cLow   = vec3(0.184, 0.463, 0.337); // #2F7656 Muted Green
+      vec4 evaluateContinuousPollutionColor(float pmVal) {
+        vec3 cVLow  = vec3(0.098, 0.280, 0.210); // #18382E Deep Forest Emerald (enhanced visibility)
+        vec3 cLow   = vec3(0.184, 0.495, 0.350); // #2F7656 Muted Green (enhanced visibility)
         vec3 cMod   = vec3(0.604, 0.671, 0.333); // #9AAB55 Muted Olive / Sage
         vec3 cElev  = vec3(0.824, 0.639, 0.302); // #D2A34D Muted Amber
         vec3 cHigh  = vec3(0.906, 0.478, 0.263); // #E77A43 Rust Orange
@@ -578,34 +578,34 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         if (pmVal <= 30.0) {
           float t = clamp(pmVal / 30.0, 0.0, 1.0);
           rgb = mix(cVLow * 0.95, cVLow, t);
-          alpha = mix(0.24, 0.30, t);
+          alpha = mix(0.44, 0.48, t);
         } else if (pmVal <= 60.0) {
           float t = (pmVal - 30.0) / 30.0;
           rgb = mix(cVLow, cLow, t);
-          alpha = mix(0.30, 0.36, t);
+          alpha = mix(0.48, 0.54, t);
         } else if (pmVal <= 100.0) {
           float t = (pmVal - 60.0) / 40.0;
           rgb = mix(cLow, cMod, t);
-          alpha = mix(0.36, 0.44, t);
+          alpha = mix(0.54, 0.60, t);
         } else if (pmVal <= 160.0) {
           float t = (pmVal - 100.0) / 60.0;
           rgb = mix(cMod, cElev, t);
-          alpha = mix(0.44, 0.52, t);
+          alpha = mix(0.60, 0.66, t);
         } else if (pmVal <= 240.0) {
           float t = (pmVal - 160.0) / 80.0;
           rgb = mix(cElev, cHigh, t);
-          alpha = mix(0.52, 0.60, t);
+          alpha = mix(0.66, 0.72, t);
         } else if (pmVal <= 320.0) {
           float t = (pmVal - 240.0) / 80.0;
           rgb = mix(cHigh, cVHigh, t);
-          alpha = mix(0.60, 0.67, t);
+          alpha = mix(0.72, 0.78, t);
         } else {
           float t = clamp((pmVal - 320.0) / 100.0, 0.0, 1.0);
           rgb = mix(cVHigh, cExt, t);
-          alpha = mix(0.67, 0.74, t);
+          alpha = mix(0.78, 0.84, t);
         }
 
-        return vec4(rgb, alpha * domainMask);
+        return vec4(rgb, alpha);
       }
 
       void main() {
@@ -617,16 +617,20 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         // 1. Recover Geographic Coordinates from Mercator UV and Bounds
         float fragLat = mix(u_map_bounds.x, u_map_bounds.z, vUv.y);
         float fragLon = mix(u_map_bounds.y, u_map_bounds.w, vUv.x);
+        vec2 fragPix = vec2(vUv.x * u_resolution.x, (1.0 - vUv.y) * u_resolution.y);
 
-        // 2. Delhi NCR Soft Domain Mask [28.25 - 28.95] x [76.75 - 77.60]
-        float southEdge = smoothstep(28.23, 28.27, fragLat);
-        float northEdge = 1.0 - smoothstep(28.93, 28.97, fragLat);
-        float westEdge  = smoothstep(76.73, 76.77, fragLon);
-        float eastEdge  = 1.0 - smoothstep(77.58, 77.62, fragLon);
-        float domainMask = southEdge * northEdge * westEdge * eastEdge;
+        // 2. Delhi NCR Domain Bounds [28.25 - 28.95] x [76.75 - 77.60]
+        bool isInsideDomain = (fragLat >= 28.25 && fragLat <= 28.95 && fragLon >= 76.75 && fragLon <= 77.60);
 
-        if (domainMask <= 0.01) {
-          gl_FragColor = vec4(0.0);
+        if (!isInsideDomain) {
+          // MISSING / INSUFFICIENT MODEL COVERAGE:
+          // Subtle neutral charcoal with fine diagonal hatching pattern
+          float hatchCoord = (fragPix.x + fragPix.y) * 0.16;
+          float hatchPattern = step(0.70, fract(hatchCoord));
+          vec3 bgNoData = vec3(0.045, 0.055, 0.070);     // Neutral charcoal background
+          vec3 hatchColor = vec3(0.095, 0.115, 0.145);   // Subtle lighter charcoal diagonal hatch
+          vec3 finalNoDataColor = mix(bgNoData, hatchColor, hatchPattern);
+          gl_FragColor = vec4(finalNoDataColor, 0.52);
           return;
         }
 
@@ -725,7 +729,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           finalConcentration = urbanConcentration + 0.35 * (bgConcentration + smokeConcentration);
         }
 
-        gl_FragColor = evaluateContinuousPollutionColor(finalConcentration, domainMask);
+        gl_FragColor = evaluateContinuousPollutionColor(finalConcentration);
       }
     `;
 
@@ -837,7 +841,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         windDirectionDeg,
         hotspots
       );
-      return res.pm25;
+      return res.pm25 ?? 0;
     };
 
     // Precompute roulette sampling weights for hotspots: W_i = (pm25 / 100)^1.8
@@ -1938,6 +1942,19 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
             <span>CPCB / DPCC Ground Sensor Station</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span
+              style={{
+                width: '10px',
+                height: '8px',
+                borderRadius: '1px',
+                background: 'repeating-linear-gradient(45deg, #1C242D, #1C242D 2px, #2A3644 2px, #2A3644 4px)',
+                border: '1px solid #334155',
+                flexShrink: 0,
+              }}
+            />
+            <span>{lang === 'hi' ? 'अपर्याप्त मॉडल कवरेज (डोमेन बाहर)' : 'Insufficient model coverage'}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
               <span style={{ width: '3px', height: '3px', borderRadius: '50%', background: '#5BC598' }} />
               <span style={{ width: '3px', height: '3px', borderRadius: '50%', background: '#E5B863' }} />
@@ -1983,8 +2000,20 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Physics-Informed Spatial Estimate
+              <div
+                style={{
+                  fontSize: '10.5px',
+                  fontWeight: 700,
+                  color: localInspected.validity === 'missing' ? 'var(--text-muted)' : 'var(--accent-cyan)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                {localInspected.validity === 'missing'
+                  ? (lang === 'hi' ? 'अपर्याप्त मॉडल कवरेज' : 'Insufficient model coverage')
+                  : localInspected.validity === 'uncertain'
+                  ? (lang === 'hi' ? 'उच्च स्थानिक अनिश्चितता' : 'Elevated Spatial Uncertainty')
+                  : (lang === 'hi' ? 'भौतिकी-आधारित स्थानिक अनुमान' : 'Physics-Informed Spatial Estimate')}
               </div>
               <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '1px' }}>
                 {localInspected.lat.toFixed(4)}°N, {localInspected.lon.toFixed(4)}°E
@@ -2003,66 +2032,101 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
             </button>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-            <span style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)' }}>
-              {localInspected.estimatedPm25}
-            </span>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>µg/m³ PM2.5</span>
-            <span className={`severity-badge ${localInspected.tier.badge}`} style={{ marginLeft: 'auto', fontSize: '9.5px' }}>
-              {lang === 'hi' ? localInspected.tier.label_hi : localInspected.tier.label_en}
-            </span>
-          </div>
+          {localInspected.validity === 'missing' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                <span style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-muted)' }}>--</span>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>µg/m³ PM2.5</span>
+                <span className="severity-badge badge-missing" style={{ marginLeft: 'auto', fontSize: '9.5px' }}>
+                  {lang === 'hi' ? 'उपलब्ध नहीं' : 'Unavailable'}
+                </span>
+              </div>
+              <div
+                style={{
+                  fontSize: '11px',
+                  color: '#CBD5E1',
+                  background: 'rgba(28, 36, 45, 0.7)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: '3px',
+                  padding: '8px',
+                  lineHeight: 1.4,
+                }}
+              >
+                <strong>{lang === 'hi' ? 'चयनित समय क्षितिज के लिए इस स्थान पर अनुमान उपलब्ध नहीं है।' : 'An estimate is unavailable at this location for the selected horizon.'}</strong>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  {lang === 'hi'
+                    ? 'यह निर्देशांक दिल्ली एनसीआर मॉडल बेसिन (28.25°N–28.95°N, 76.75°E–77.60°E) से बाहर है। कोई कृत्रिम संख्या उत्पन्न नहीं की गई है।'
+                    : 'Location is outside the supported Delhi NCR modeling domain (28.25°N–28.95°N, 76.75°E–77.60°E). No concentration values are fabricated.'}
+                </div>
+              </div>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                Nearest ground monitor: {localInspected.nearestStation.name_en} ({localInspected.nearestStation.distanceKm} km away)
+              </div>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                <span style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                  {localInspected.estimatedPm25}
+                </span>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>µg/m³ PM2.5</span>
+                <span className={`severity-badge ${localInspected.tier.badge}`} style={{ marginLeft: 'auto', fontSize: '9.5px' }}>
+                  {lang === 'hi' ? localInspected.tier.label_hi : localInspected.tier.label_en}
+                </span>
+              </div>
 
-          {/* Uncertainty & Provenance Details */}
-          <div
-            style={{
-              fontSize: '10.5px',
-              padding: '6px 8px',
-              borderRadius: '3px',
-              background: 'var(--bg-surface-elevated)',
-              border: '1px solid var(--border-subtle)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '3px',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Spatial Uncertainty:</span>
-              <strong style={{ color: 'var(--accent-cyan)' }}>±{localInspected.uncertaintySpread} µg/m³</strong>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Nearest Ground Sensor:</span>
-              <span style={{ color: 'var(--text-secondary)' }}>
-                {localInspected.nearestStation.name_en} ({localInspected.nearestStation.distanceKm} km)
-              </span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Sensor Observation:</span>
-              <span style={{ color: 'var(--text-secondary)' }}>
-                {localInspected.nearestStation.observedPm25} µg/m³ ({localInspected.nearestStation.agency})
-              </span>
-            </div>
-          </div>
+              {/* Uncertainty & Provenance Details */}
+              <div
+                style={{
+                  fontSize: '10.5px',
+                  padding: '6px 8px',
+                  borderRadius: '3px',
+                  background: 'var(--bg-surface-elevated)',
+                  border: '1px solid var(--border-subtle)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '3px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Spatial Uncertainty:</span>
+                  <strong style={{ color: 'var(--accent-cyan)' }}>±{localInspected.uncertaintySpread} µg/m³</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Nearest Ground Sensor:</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>
+                    {localInspected.nearestStation.name_en} ({localInspected.nearestStation.distanceKm} km)
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Sensor Observation:</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>
+                    {localInspected.nearestStation.observedPm25} µg/m³ ({localInspected.nearestStation.agency})
+                  </span>
+                </div>
+              </div>
 
-          {/* Model Component Breakdown */}
-          <div style={{ fontSize: '10px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-subtle)', paddingTop: '5px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-              <span>Regional Background:</span>
-              <span style={{ color: 'var(--text-secondary)' }}>{localInspected.components.background} µg/m³</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-              <span>NW Biomass Advection:</span>
-              <span style={{ color: 'var(--text-secondary)' }}>{localInspected.components.smokeAdvection} µg/m³</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Urban Plume Dispersion:</span>
-              <span style={{ color: 'var(--text-secondary)' }}>{localInspected.components.urbanDispersion} µg/m³</span>
-            </div>
-          </div>
+              {/* Model Component Breakdown */}
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-subtle)', paddingTop: '5px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                  <span>Regional Background:</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{localInspected.components.background} µg/m³</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                  <span>NW Biomass Advection:</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{localInspected.components.smokeAdvection} µg/m³</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Urban Plume Dispersion:</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{localInspected.components.urbanDispersion} µg/m³</span>
+                </div>
+              </div>
 
-          <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', lineHeight: 1.35, fontStyle: 'italic' }}>
-            * Continuous estimate derived via physics-informed advection-dispersion with distance-to-station uncertainty.
-          </div>
+              <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', lineHeight: 1.35, fontStyle: 'italic' }}>
+                * Continuous estimate derived via physics-informed advection-dispersion with distance-to-station uncertainty.
+              </div>
+            </>
+          )}
         </div>
       )}
 

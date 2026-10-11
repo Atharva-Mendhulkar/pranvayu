@@ -179,83 +179,151 @@ export const IntelligenceSidebar: React.FC<IntelligenceSidebarProps> = ({
       <div className="sidebar-content-cards">
         {/* 2. INSPECTED LOCATION OR CURRENT CONDITIONS */}
         {inspectedLocation ? (
-          <section className="sidebar-section" aria-label="Inspected Spatial Estimate" style={{ borderLeft: '3px solid var(--accent-cyan)' }}>
+          <section
+            className="sidebar-section"
+            aria-label="Inspected Spatial Estimate"
+            style={{ borderLeft: inspectedLocation.validity === 'missing' ? '3px solid var(--border-medium)' : '3px solid var(--accent-cyan)' }}
+          >
             <div className="sidebar-section-header">
-              <span className="sidebar-section-title" style={{ color: 'var(--accent-cyan)' }}>
-                Spatial Estimate · {inspectedLocation.lat.toFixed(3)}°N, {inspectedLocation.lon.toFixed(3)}°E
+              <span className="sidebar-section-title" style={{ color: inspectedLocation.validity === 'missing' ? 'var(--text-muted)' : 'var(--accent-cyan)' }}>
+                {inspectedLocation.validity === 'missing' ? 'Out of Domain · ' : 'Spatial Estimate · '}
+                {inspectedLocation.lat.toFixed(3)}°N, {inspectedLocation.lon.toFixed(3)}°E
               </span>
               <span className={`severity-badge ${inspectedLocation.tier.badge}`}>
                 {lang === 'hi' ? inspectedLocation.tier.label_hi : inspectedLocation.tier.label_en}
               </span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-              <span style={{ fontSize: '30px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
-                {inspectedLocation.estimatedPm25}
-              </span>
-              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                µg/m³ PM2.5
-              </span>
-              <span
-                style={{
-                  marginLeft: 'auto',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  color: 'var(--accent-cyan)',
-                }}
-              >
-                ±{inspectedLocation.uncertaintySpread} µg/m³ σ
-              </span>
-            </div>
+            {inspectedLocation.validity === 'missing' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                  <span style={{ fontSize: '30px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '-0.5px' }}>
+                    --
+                  </span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>
+                    µg/m³ PM2.5
+                  </span>
+                  <span style={{ marginLeft: 'auto', fontSize: '10.5px', color: 'var(--text-muted)' }}>
+                    No Data
+                  </span>
+                </div>
 
-            {/* Provenance and Distance to Observation Anchor */}
-            <div
-              style={{
-                fontSize: '10.5px',
-                padding: '6px 8px',
-                borderRadius: '3px',
-                background: 'var(--bg-surface-elevated)',
-                border: '1px solid var(--border-subtle)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '4px',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Data Provenance:</span>
-                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                  {inspectedLocation.provenanceLabel_en}
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Nearest Physical Sensor:</span>
-                <span style={{ color: 'var(--text-secondary)' }}>
-                  {inspectedLocation.nearestStation.name_en} ({inspectedLocation.nearestStation.distanceKm} km)
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Sensor Observation:</span>
-                <span style={{ color: 'var(--text-secondary)' }}>
-                  {inspectedLocation.nearestStation.observedPm25} µg/m³ ({inspectedLocation.nearestStation.agency} verified)
-                </span>
-              </div>
-            </div>
+                <div
+                  style={{
+                    fontSize: '11px',
+                    padding: '8px 10px',
+                    borderRadius: '3px',
+                    background: 'rgba(28, 36, 45, 0.7)',
+                    border: '1px solid var(--border-subtle)',
+                    color: '#E2E8F0',
+                    lineHeight: 1.45,
+                  }}
+                >
+                  <strong>{lang === 'hi' ? 'चयनित समय क्षितिज के लिए इस स्थान पर अनुमान उपलब्ध नहीं है।' : 'An estimate is unavailable at this location for the selected horizon.'}</strong>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                    {lang === 'hi'
+                      ? 'यह स्थान समर्थित दिल्ली एनसीआर मॉडलिंग बेसिन (28.25°N–28.95°N, 76.75°E–77.60°E) से बाहर है। मॉडल कोई मनमाना मान प्रस्तुत नहीं करता।'
+                      : 'This coordinate is outside the supported Delhi NCR modeling basin (28.25°N–28.95°N, 76.75°E–77.60°E). Boundary meteorology is unavailable.'}
+                  </div>
+                </div>
 
-            {/* Component Decomposition */}
-            <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '3px', borderTop: '1px solid var(--border-subtle)', paddingTop: '5px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Regional Background:</span>
-                <span style={{ color: 'var(--text-secondary)' }}>{inspectedLocation.components.background} µg/m³</span>
+                <div
+                  style={{
+                    fontSize: '10.5px',
+                    padding: '6px 8px',
+                    borderRadius: '3px',
+                    background: 'var(--bg-surface-elevated)',
+                    border: '1px solid var(--border-subtle)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Nearest Monitoring Station:</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      {inspectedLocation.nearestStation.name_en} ({inspectedLocation.nearestStation.distanceKm} km)
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Station Observation:</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      {inspectedLocation.nearestStation.observedPm25} µg/m³ ({inspectedLocation.nearestStation.agency})
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>NW Biomass Advection:</span>
-                <span style={{ color: 'var(--text-secondary)' }}>{inspectedLocation.components.smokeAdvection} µg/m³</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Urban Core Dispersion:</span>
-                <span style={{ color: 'var(--text-secondary)' }}>{inspectedLocation.components.urbanDispersion} µg/m³</span>
-              </div>
-            </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                  <span style={{ fontSize: '30px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
+                    {inspectedLocation.estimatedPm25}
+                  </span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                    µg/m³ PM2.5
+                  </span>
+                  <span
+                    style={{
+                      marginLeft: 'auto',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      color: 'var(--accent-cyan)',
+                    }}
+                  >
+                    ±{inspectedLocation.uncertaintySpread} µg/m³ σ
+                  </span>
+                </div>
+
+                {/* Provenance and Distance to Observation Anchor */}
+                <div
+                  style={{
+                    fontSize: '10.5px',
+                    padding: '6px 8px',
+                    borderRadius: '3px',
+                    background: 'var(--bg-surface-elevated)',
+                    border: '1px solid var(--border-subtle)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Data Provenance:</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {inspectedLocation.provenanceLabel_en}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Nearest Physical Sensor:</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      {inspectedLocation.nearestStation.name_en} ({inspectedLocation.nearestStation.distanceKm} km)
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Sensor Observation:</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      {inspectedLocation.nearestStation.observedPm25} µg/m³ ({inspectedLocation.nearestStation.agency} verified)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Component Decomposition */}
+                <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '3px', borderTop: '1px solid var(--border-subtle)', paddingTop: '5px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Regional Background:</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{inspectedLocation.components.background} µg/m³</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>NW Biomass Advection:</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{inspectedLocation.components.smokeAdvection} µg/m³</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Urban Core Dispersion:</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{inspectedLocation.components.urbanDispersion} µg/m³</span>
+                  </div>
+                </div>
+              </>
+            )}
 
             <div style={{ display: 'flex', gap: '6px', marginTop: '2px' }}>
               <button

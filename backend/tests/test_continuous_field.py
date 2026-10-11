@@ -78,11 +78,12 @@ def test_clean_air_evaluates_to_green_palette():
 
 
 def test_palette_tier_monotonicity_and_hex_integrity():
-    """Verifies that all 7 palette tiers are strictly ordered and contiguous."""
-    assert len(PALETTE_TIERS) == 7
+    """Verifies that all pollution palette tiers are strictly ordered and contiguous."""
+    pollution_tiers = [t for t in PALETTE_TIERS if t["id"] != "missing"]
+    assert len(pollution_tiers) == 7
 
     prev_max = 0.0
-    for tier in PALETTE_TIERS:
+    for tier in pollution_tiers:
         assert tier["min_pm"] == prev_max
         assert tier["max_pm"] > tier["min_pm"]
         assert tier["hex"].startswith("#")
@@ -99,6 +100,7 @@ def test_palette_tier_monotonicity_and_hex_integrity():
     assert get_continuous_palette_tier(200.0)["id"] == "high"
     assert get_continuous_palette_tier(290.0)["id"] == "very_high"
     assert get_continuous_palette_tier(400.0)["id"] == "extreme"
+    assert get_continuous_palette_tier(None)["id"] == "missing"
 
 
 def test_hotspot_cores_produce_localized_intensity():
@@ -123,6 +125,8 @@ def test_hotspot_cores_produce_localized_intensity():
         hotspots=SAMPLE_HOTSPOTS,
     )
 
+    assert pm_av is not None
+    assert pm_remote is not None
     assert pm_av > 240.0  # Anand Vihar core is very high / severe
     assert pm_av > pm_remote * 4.0
     assert comp_av["urban_dispersion"] > 100.0
@@ -153,7 +157,9 @@ def test_spatial_uncertainty_scales_with_station_distance():
 
 
 def test_out_of_domain_handling():
-    """Out-of-domain coordinates should return zero PM and 'out_of_domain' status."""
+    """Out-of-domain coordinates should return None PM (missing data) and 'out_of_domain' status."""
+    from pv.model.spatial_field import classify_cell_validity
+
     pm, comp = evaluate_continuous_pm25(
         lat=27.50,
         lon=77.00,
@@ -162,5 +168,11 @@ def test_out_of_domain_handling():
         wind_dir_deg=315.0,
         hotspots=SAMPLE_HOTSPOTS,
     )
-    assert pm == 0.0
+    assert pm is None  # Never fabricate 0.0 or fake numbers for missing cells!
     assert comp["status"] == "out_of_domain"
+    assert comp["validity"] == "missing"
+
+    assert classify_cell_validity(27.50, 77.00) == "missing"
+    assert classify_cell_validity(28.65, 77.31, nearest_station_distance_km=1.0) == "valid"
+    assert classify_cell_validity(28.30, 76.85, nearest_station_distance_km=22.0) == "uncertain"
+

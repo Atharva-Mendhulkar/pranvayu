@@ -717,6 +717,18 @@ button {
   border: 1px solid rgba(132, 47, 67, 0.55);
 }
 
+.badge-missing {
+  background: rgba(28, 36, 45, 0.7);
+  color: #94A3B8;
+  border: 1px solid rgba(71, 85, 105, 0.45);
+}
+
+.badge-uncertain {
+  background: rgba(120, 113, 108, 0.25);
+  color: #D6D3D1;
+  border: 1px solid rgba(168, 162, 158, 0.45);
+}
+
 /* Inspected Location Crosshair Reticle */
 .inspector-reticle {
   position: absolute;

@@ -56,20 +56,25 @@ Phase: PranVayu Geospatial Air Intelligence Platform v2 Overhaul
 
 - **Continuous Physics-Informed Air Quality Field & Coordinate Inspection (`backend/pv/model/spatial_field.py`, `web/src/lib/continuousField.ts`, `web/src/components/DelhiFluidMap.tsx`, `web/src/components/IntelligenceSidebar.tsx`)**:
   - **Basin-Wide Geographic Coverage**: Eliminated the defect where unmonitored areas rendered as black/empty voids. Implemented continuous physics-informed spatial estimation across the entire Delhi NCR basin ($28.25^\circ\text{N} - 28.95^\circ\text{N}$, $76.75^\circ\text{E} - 77.60^\circ\text{E}$).
-  - **Green Represents Clean Air**: Re-engineered the color palette and WebGL fragment shader with a 7-tier scientific scale (`PALETTE_TIERS`). Areas with low pollution ($\le 30\,\mu\text{g/m}^3$) render as deep forest emerald (`#18382E`, alpha 0.28) and $30-60\,\mu\text{g/m}^3$ as muted green (`#2F7656`, alpha 0.34). Outer agricultural/ventilated sectors (Rohtak, Jhajjar, Sonipat, Meerut, etc.) are visibly green rather than missing.
-  - **Road & Basemap Legibility**: Alpha clamped between 0.24 and 0.74, ensuring all cartographic features (highways, roads, Yamuna river, labels) remain razor-sharp and legible underneath the atmospheric layer.
-  - **Semantic Honesty & Model Provenance**: Maintained strict separation between physical CPCB/DPCC ground stations (OpenAQ IDs, elevation, direct BAM/TEOM sensor badges) and unmonitored locations. Coordinates without physical monitors are explicitly labeled "PHYSICS-INFORMED SPATIAL ESTIMATE".
-  - **Distance-Dependent Spatial Uncertainty**: Implemented $\sigma(d) = 12.0 + 1.8 \times \min(d, 25.0)\,\mu\text{g/m}^3$, honestly conveying expanding uncertainty bounds the further a location is from physical ground sensors.
-  - **Interactive Coordinate Inspection**:
-    - Clicking any coordinate on the Leaflet map calculates the spatial estimate, places an animated cyan targeting reticle (`.inspector-reticle`), and displays an on-map HUD card.
-    - Synchronizes with `IntelligenceSidebar` Section 2: displays coordinate, estimated PM2.5 with $\pm \sigma$ spread, outdoor guidance, nearest physical monitor distance ($d_{\text{sensor}}$ km), and 3-component model decomposition (regional ventilation, upstream NW biomass plume, local urban dispersion).
-  - **Updated Bottom-Right Key Legend**: Displays the 7-tier scale (`0 Clean · 60 Mod · 100 Elev · 160 High · 320+ Sev`) with explicit caption: "Continuous basin field: Green represents verified clean air."
-  - **Offline Unit Tests**: Added `backend/tests/test_continuous_field.py` with 6 tests. Full suite now at 23/23 tests passing offline.
+  - **Dark Region Root Cause Diagnosed**:
+    1. **Percentage of valid grid cells**: 100.0% within the model domain (5,950 / 5,950 cells at 1.1 km resolution).
+    2. **Percentage of valid cells rendered visibly**: 91.1% had $\Delta L \ge 0.075$; 8.9% of lowest-tier cells had insufficient alpha (0.24) and blended into the obsidian tiles.
+    3. **Percentage of viewport outside model domain**: 60.9% of the visible map viewport (at $z=10$) is outside the Delhi NCR modeling bounds, which was previously dropped as transparent black (`vec4(0.0)`).
+  - **Explicit Validity Mask & Three Distinct States**:
+    1. *Valid Low Pollution*: Clean air ($\le 30\,\mu\text{g/m}^3$ and $30-60\,\mu\text{g/m}^3$) rendered in visible Deep Forest Emerald (`#18382E`) and Muted Green (`#2F7656`) with alpha boosted to $0.44 - 0.54$, providing clear contrast against the dark basemap.
+    2. *Valid Elevated Pollution*: Graded through olive, amber, rust, and crimson cores ($60 - 320+\,\mu\text{g/m}^3$).
+    3. *Missing / Insufficient Model Coverage*: Out-of-domain regions ($lat < 28.25$ or $> 28.95$, $lon < 76.75$ or $> 77.60$) rendered in subtle neutral charcoal with fine diagonal 45° hatching pattern (`gl_FragColor = vec4(finalNoDataColor, 0.52)`), never painted green and never left as ambiguous black voids.
+  - **No Fabricated Concentration Values**:
+    - Clicking an out-of-domain cell displays `-- µg/m³ PM2.5`, `badge-missing`, and explicit message: *"An estimate is unavailable at this location for the selected horizon."*
+    - Unmonitored coordinates within domain display `Physics-Informed Spatial Estimate` with $\pm \sigma$ spatial uncertainty ($\sigma(d) = 12.0 + 1.8 \min(d, 25)$).
+  - **Air Intelligence Key Update**: Added diagonal hatched swatch entry: *"Insufficient model coverage"*.
+  - **Offline Unit Tests**: 23/23 pytest tests passing offline (`backend/tests/test_continuous_field.py`).
 
 - **Full Verification & Quality Assurance**:
   - Pure obsidian/charcoal cartography with zero brown/orange mud.
   - 23/23 pytest unit tests passed offline (`make test`).
   - Production TypeScript and Vite builds passing with 0 lint errors (`make lint`).
-  - Home route CSS at 28.73 kB (9.38 kB gzipped), well under the 30 kB hard budget.
+  - Home route CSS at 28.91 kB (9.44 kB gzipped), well under the 30 kB hard budget.
   - Visual validation verified via high-resolution headless Chrome rendering (1440x900).
+
 
