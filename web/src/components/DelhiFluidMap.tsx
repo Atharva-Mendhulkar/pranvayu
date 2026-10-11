@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Language } from '../lib/i18n';
-import { WindIcon, LayersIcon, PlayIcon, PauseIcon, RefreshIcon, SchoolIcon, StationIcon } from './Icons';
+import { WindIcon, LayersIcon, PlayIcon, PauseIcon, RefreshIcon, SchoolIcon, ParticlesIcon } from './Icons';
 import { MonitoringStation, School, SchoolPeriodVerdict } from '../types/intelligence';
 
 export interface HotspotData {
@@ -50,6 +50,17 @@ export interface DelhiFluidMapProps {
 
 const FORECAST_HORIZONS = [0, 1, 3, 6, 12, 24];
 
+// Internal data structure for geographic advection particles
+interface AdvectionParticle {
+  lat: number;
+  lon: number;
+  age: number;
+  maxAge: number;
+  speedScale: number;
+  scaleType: 0 | 1; // 0: fine point, 1: medium filament
+  history: Array<[number, number]>;
+}
+
 export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
   hotspots,
   stations = [],
@@ -74,19 +85,22 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const particleCanvasRef = useRef<HTMLCanvasElement>(null);
   const windCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // Visualization mode: Mode A: 'hotspots' (default) vs Mode B: 'continuous'
   const [visMode, setVisMode] = useState<'hotspots' | 'continuous'>('hotspots');
 
-  // Layer visibility state (5 distinct layers)
+  // Layer visibility state (6 distinct independent layers)
   const [layers, setLayers] = useState({
-    pollution: true,
-    wind: true,
-    hotspots: true,
-    stations: true,
-    schools: true,
+    pollution: true,  // Layer 2: WebGL concentration field
+    particles: true,  // Layer 5: Fine-grained atmospheric particle advection
+    wind: true,       // Layer 4: Cyan wind streamlines & directional vectors
+    hotspots: true,   // Layer 3: Model-inferred plume cores
+    stations: true,   // Layer 6a: CPCB/DPCC monitoring stations
+    schools: true,    // Layer 6b: Delhi schools & academies
   });
+  const [particleDensity, setParticleDensity] = useState<'auto' | 'low' | 'medium' | 'high'>('auto');
   const [showLayerMenu, setShowLayerMenu] = useState(false);
 
   // Current zoom level for zoom-dependent detail
@@ -194,6 +208,8 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     }
   }, [hotspots, stations, schools]);
 
+  const initialMountRef = useRef<boolean>(true);
+
   // Synchronize selection from outside
   useEffect(() => {
     if (selectedHotspotId) {
@@ -202,8 +218,9 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         setActivePin(found);
         setActiveStationData(null);
         setActiveSchoolData(null);
-        if (mapInstanceRef.current) {
-          mapInstanceRef.current.panTo([found.lat, found.lon], { animate: true, duration: 0.8 });
+        if (!initialMountRef.current && mapInstanceRef.current) {
+          const targetZoom = Math.max(mapInstanceRef.current.getZoom(), 13);
+          mapInstanceRef.current.flyTo([found.lat, found.lon], targetZoom, { duration: 0.8 });
         }
       }
     }
@@ -216,8 +233,9 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         setActiveStationData(found);
         setActivePin(null);
         setActiveSchoolData(null);
-        if (mapInstanceRef.current) {
-          mapInstanceRef.current.panTo([found.lat, found.lon], { animate: true, duration: 0.8 });
+        if (!initialMountRef.current && mapInstanceRef.current) {
+          const targetZoom = Math.max(mapInstanceRef.current.getZoom(), 13);
+          mapInstanceRef.current.flyTo([found.lat, found.lon], targetZoom, { duration: 0.8 });
         }
       }
     }
@@ -230,8 +248,9 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         setActiveSchoolData(found);
         setActivePin(null);
         setActiveStationData(null);
-        if (mapInstanceRef.current) {
-          mapInstanceRef.current.panTo([found.lat, found.lon], { animate: true, duration: 0.8 });
+        if (!initialMountRef.current && mapInstanceRef.current) {
+          const targetZoom = Math.max(mapInstanceRef.current.getZoom(), 13);
+          mapInstanceRef.current.flyTo([found.lat, found.lon], targetZoom, { duration: 0.8 });
         }
       }
     }
@@ -251,10 +270,40 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         zoomControl: false,
       });
 
-      map.fitBounds([
-        [28.3044, 76.8164],
-        [28.9216, 77.5195],
-      ]);
+      const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const urlZoom = urlParams?.get('zoom');
+      const urlLocParam = urlParams?.get('locality');
+      const urlLat = urlParams?.get('lat');
+      const urlLon = urlParams?.get('lon');
+
+      let initialSet = false;
+      if (urlLat && urlLon) {
+        const parsedLat = parseFloat(urlLat);
+        const parsedLon = parseFloat(urlLon);
+        const parsedZoom = urlZoom ? parseInt(urlZoom, 10) : 14;
+        map.setView([parsedLat, parsedLon], parsedZoom);
+        initialSet = true;
+      } else if (urlLocParam) {
+        const found = hotspots.find((h) => h.id === urlLocParam)
+          || stations?.find((s) => s.id === urlLocParam)
+          || schools?.find((sc) => sc.id === urlLocParam);
+        if (found) {
+          const parsedZoom = urlZoom ? parseInt(urlZoom, 10) : 14;
+          map.setView([found.lat, found.lon], parsedZoom);
+          initialSet = true;
+        }
+      } else if (urlZoom) {
+        const parsedZoom = parseInt(urlZoom, 10);
+        map.setView([28.6139, 77.2090], parsedZoom);
+        initialSet = true;
+      }
+
+      if (!initialSet) {
+        map.fitBounds([
+          [28.3044, 76.8164],
+          [28.9216, 77.5195],
+        ]);
+      }
 
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
@@ -272,6 +321,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         if (mapInstanceRef.current) {
           mapInstanceRef.current.invalidateSize();
           syncMapCoordinates();
+          initialMountRef.current = false;
         }
       }, 100);
     }
@@ -282,9 +332,9 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         mapInstanceRef.current = null;
       }
     };
-  }, [syncMapCoordinates]);
+  }, [syncMapCoordinates, hotspots, stations, schools]);
 
-  // Three.js Atmospheric Physics WebGL Shader Setup
+  // Three.js Atmospheric Physics WebGL Shader Setup (Layer 2)
   useEffect(() => {
     if (!containerRef.current || !canvasRef.current) return;
 
@@ -520,7 +570,312 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     }
   }, [windDirectionDeg, windSpeedKmh, hourOffset, layers.pollution, visMode]);
 
-  // 2D Wind Streamlines with Visible Directional Arrowheads
+  // =========================================================================
+  // LAYER 5: GEOGRAPHIC ATMOSPHERIC PARTICLE ADVECTION ENGINE
+  // =========================================================================
+  useEffect(() => {
+    const canvas = particleCanvasRef.current;
+    if (!canvas || !layers.particles) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId: number;
+    let lastTime = performance.now();
+    let isPaused = false;
+
+    // Determine target particle budget based on zoom and density setting
+    const getTargetCount = (zoom: number, density: 'auto' | 'low' | 'medium' | 'high'): number => {
+      let base = 750;
+      if (zoom <= 10) base = 420;
+      else if (zoom <= 12) base = 850;
+      else if (zoom <= 14) base = 1350;
+      else base = 1800;
+
+      if (density === 'low') return Math.round(base * 0.55);
+      if (density === 'high') return Math.round(base * 1.45);
+      return base;
+    };
+
+    // Meteorological wind transport direction
+    const transportRad = (((windDirectionDeg + 180) % 360) * Math.PI) / 180;
+    const speedMps = Math.max((windSpeedKmh * 1000) / 3600, 1.2);
+    const uBase = speedMps * Math.sin(transportRad);
+    const vBase = speedMps * Math.cos(transportRad);
+    const unitWDirX = Math.sin(transportRad);
+    const unitWDirY = Math.cos(transportRad);
+
+    // Evaluates local concentration at any geographic coordinate
+    const sampleConcentration = (lat: number, lon: number): number => {
+      let maxC = 0;
+      let sumC = 0;
+      const diurnalMod = 0.92 + 0.22 * Math.sin((hourOffset - 8.0) * 0.26);
+
+      for (let i = 0; i < hotspots.length; i++) {
+        const h = hotspots[i];
+        const dyMeters = (lat - h.lat) * 111139.0;
+        const dxMeters = (lon - h.lon) * 111139.0 * Math.cos((lat * Math.PI) / 180.0);
+
+        const dDown = dxMeters * unitWDirX + dyMeters * unitWDirY;
+        const dCross = -dxMeters * unitWDirY + dyMeters * unitWDirX;
+
+        const sigma0 = 2200.0;
+        let sigmaDown = sigma0;
+        let sigmaCross = sigma0 * 0.75;
+
+        if (dDown > 0) {
+          sigmaDown = sigma0 + (windSpeedKmh / 20.0) * 1800.0 * 0.5;
+          sigmaCross = sigma0 * 0.75 + dDown * 0.12;
+        } else {
+          sigmaDown = sigma0 * 0.65;
+        }
+
+        const rDown = dDown / sigmaDown;
+        const rCross = dCross / sigmaCross;
+        const distSq = rDown * rDown + rCross * rCross;
+
+        if (distSq > 9.0) continue;
+
+        const cPoint = (h.pm25 * diurnalMod) * Math.exp(-0.5 * distSq);
+        if (cPoint > maxC) maxC = cPoint;
+        sumC += cPoint;
+      }
+
+      return maxC + 0.25 * (sumC - maxC);
+    };
+
+    // Color mapper for atmospheric particulate matter
+    const getParticleColor = (pmVal: number, alpha: number) => {
+      if (pmVal < 35) {
+        // Background clean air: subtle slate grey
+        return {
+          stroke: `rgba(161, 172, 184, ${alpha * 0.30})`,
+          fill: `rgba(161, 172, 184, ${alpha * 0.40})`,
+        };
+      } else if (pmVal < 90) {
+        // Moderate: translucent golden amber
+        return {
+          stroke: `rgba(231, 200, 111, ${alpha * 0.50})`,
+          fill: `rgba(231, 200, 111, ${alpha * 0.65})`,
+        };
+      } else if (pmVal < 180) {
+        // Poor / Elevated: warm terracotta orange
+        return {
+          stroke: `rgba(232, 120, 73, ${alpha * 0.68})`,
+          fill: `rgba(232, 120, 73, ${alpha * 0.85})`,
+        };
+      } else {
+        // Very Poor / Severe: deep rich crimson
+        return {
+          stroke: `rgba(233, 86, 78, ${alpha * 0.78})`,
+          fill: `rgba(233, 86, 78, ${alpha * 0.95})`,
+        };
+      }
+    };
+
+    // Spawn a particle either inside an elevated hotspot plume or within current bounds
+    const spawnParticle = (p: AdvectionParticle, mapBounds?: L.LatLngBounds) => {
+      let lat = 28.6139;
+      let lon = 77.2090;
+
+      // 70% probability: sample from elevated pollution regions
+      if (Math.random() < 0.72 && hotspots.length > 0) {
+        const randHotspot = hotspots[Math.floor(Math.random() * hotspots.length)];
+        const angle = Math.random() * Math.PI * 2;
+        // Bias slightly upwind so particles travel across hotspot core
+        const rDistMeters = Math.random() * 3200.0;
+        const dxM = Math.cos(angle) * rDistMeters;
+        const dyM = Math.sin(angle) * rDistMeters;
+
+        lat = randHotspot.lat + (dyM / 111139.0);
+        lon = randHotspot.lon + (dxM / (111139.0 * Math.cos((randHotspot.lat * Math.PI) / 180.0)));
+      } else if (mapBounds) {
+        // 28% probability: sample uniformly across viewport bounds
+        const south = mapBounds.getSouth();
+        const north = mapBounds.getNorth();
+        const west = mapBounds.getWest();
+        const east = mapBounds.getEast();
+
+        lat = south + Math.random() * (north - south);
+        lon = west + Math.random() * (east - west);
+      }
+
+      p.lat = lat;
+      p.lon = lon;
+      p.age = 0;
+      p.maxAge = 1.8 + Math.random() * 2.8;
+      p.speedScale = 0.85 + Math.random() * 0.30;
+      p.scaleType = Math.random() < 0.28 ? 1 : 0; // 28% medium filaments, 72% fine points
+      p.history = [[lat, lon]];
+    };
+
+    // Pre-allocate particle pool
+    const targetCount = getTargetCount(currentZoom, particleDensity);
+    const particles: AdvectionParticle[] = [];
+    const initialBounds = mapInstanceRef.current ? mapInstanceRef.current.getBounds() : undefined;
+
+    for (let i = 0; i < targetCount; i++) {
+      const p: AdvectionParticle = {
+        lat: 28.61,
+        lon: 77.21,
+        age: 0,
+        maxAge: 2.0,
+        speedScale: 1.0,
+        scaleType: 0,
+        history: [],
+      };
+      spawnParticle(p, initialBounds);
+      // Stagger initial ages so particles do not respawn in sync
+      p.age = Math.random() * p.maxAge;
+      particles.push(p);
+    }
+
+    // Check for user reduced motion preference
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Listen to tab visibility to prevent jumps
+    const handleVisibility = () => {
+      if (document.hidden) {
+        isPaused = true;
+      } else {
+        isPaused = false;
+        lastTime = performance.now();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // Main particle advection rendering loop
+    const renderParticles = (now: number) => {
+      const map = mapInstanceRef.current;
+      if (!map || isPaused) {
+        animId = requestAnimationFrame(renderParticles);
+        return;
+      }
+
+      const w = canvas.parentElement?.clientWidth || 800;
+      const h = canvas.parentElement?.clientHeight || 600;
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+
+      // Delta time in seconds (clamped to max 50ms)
+      const dt = Math.min((now - lastTime) / 1000.0, 0.05);
+      lastTime = now;
+
+      ctx.clearRect(0, 0, w, h);
+
+      const mapBounds = map.getBounds();
+      const zoom = map.getZoom();
+      const currentTargetCount = getTargetCount(zoom, particleDensity);
+
+      // Adjust particle pool dynamically if zoom changed
+      while (particles.length < currentTargetCount) {
+        const p: AdvectionParticle = {
+          lat: 28.61,
+          lon: 77.21,
+          age: 0,
+          maxAge: 2.0,
+          speedScale: 1.0,
+          scaleType: 0,
+          history: [],
+        };
+        spawnParticle(p, mapBounds);
+        particles.push(p);
+      }
+      if (particles.length > currentTargetCount) {
+        particles.length = currentTargetCount;
+      }
+
+      // Maximum history points based on zoom
+      const maxHistory = zoom >= 14 ? 8 : zoom >= 12 ? 6 : 4;
+      // Advection visual multiplier (meters/second in animation time)
+      const visualSpeedMultiplier = 110.0;
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+
+        if (!prefersReducedMotion) {
+          // Local wind with topographic deflection
+          const uLocal = uBase * (1.0 + 0.12 * Math.cos((p.lon - 77.22) * 15.0));
+          const vLocal = vBase * (1.0 + 0.08 * Math.sin((p.lat - 28.61) * 12.0));
+
+          // Physical advection in geodesic space (meters -> degrees)
+          const dxM = uLocal * dt * p.speedScale * visualSpeedMultiplier;
+          const dyM = vLocal * dt * p.speedScale * visualSpeedMultiplier;
+
+          const dLat = (dyM / 6371000.0) * (180.0 / Math.PI);
+          const dLon = (dxM / (6371000.0 * Math.cos((p.lat * Math.PI) / 180.0))) * (180.0 / Math.PI);
+
+          p.lat += dLat;
+          p.lon += dLon;
+          p.age += dt;
+
+          // History trail accumulation
+          p.history.push([p.lat, p.lon]);
+          if (p.history.length > maxHistory) {
+            p.history.shift();
+          }
+
+          // Respawn expired or out-of-bounds particles
+          if (p.age >= p.maxAge || !mapBounds.pad(0.3).contains([p.lat, p.lon])) {
+            spawnParticle(p, mapBounds);
+            continue;
+          }
+        }
+
+        // Project particle head to container pixel space
+        const headPt = map.latLngToContainerPoint([p.lat, p.lon]);
+        if (headPt.x < -40 || headPt.x > w + 40 || headPt.y < -40 || headPt.y > h + 40) {
+          continue;
+        }
+
+        // Evaluate local concentration for scientific opacity and palette
+        const localPm = sampleConcentration(p.lat, p.lon);
+        const lifeEnvelope = Math.sin((p.age / p.maxAge) * Math.PI);
+        const baseAlpha = lifeEnvelope * (localPm >= 30 ? 0.75 : 0.35);
+        const color = getParticleColor(localPm, baseAlpha);
+
+        // Render Trail
+        if (p.history.length >= 2) {
+          ctx.beginPath();
+          const firstPt = map.latLngToContainerPoint(p.history[0]);
+          ctx.moveTo(firstPt.x, firstPt.y);
+
+          for (let hIdx = 1; hIdx < p.history.length; hIdx++) {
+            const hPt = map.latLngToContainerPoint(p.history[hIdx]);
+            ctx.lineTo(hPt.x, hPt.y);
+          }
+
+          ctx.lineWidth = p.scaleType === 1 ? (zoom >= 13 ? 1.4 : 1.1) : (zoom >= 13 ? 0.9 : 0.7);
+          ctx.strokeStyle = color.stroke;
+          ctx.stroke();
+        }
+
+        // Render Particle Head
+        const headRadius = p.scaleType === 1
+          ? (zoom >= 14 ? 1.9 : zoom >= 12 ? 1.4 : 1.1)
+          : (zoom >= 14 ? 1.4 : zoom >= 12 ? 1.0 : 0.8);
+
+        ctx.beginPath();
+        ctx.arc(headPt.x, headPt.y, headRadius, 0, Math.PI * 2);
+        ctx.fillStyle = color.fill;
+        ctx.fill();
+      }
+
+      animId = requestAnimationFrame(renderParticles);
+    };
+
+    animId = requestAnimationFrame(renderParticles);
+
+    return () => {
+      cancelAnimationFrame(animId);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [hotspots, windDirectionDeg, windSpeedKmh, hourOffset, layers.particles, particleDensity, currentZoom]);
+
+  // =========================================================================
+  // LAYER 4: 2D WIND STREAMLINES (Cyan directional lines)
+  // =========================================================================
   useEffect(() => {
     const canvas = windCanvasRef.current;
     if (!canvas || !layers.wind) return;
@@ -533,7 +888,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     canvas.width = w;
     canvas.height = h;
 
-    const numParticles = 160;
+    const numParticles = 140;
     const transportRad = (((windDirectionDeg + 180) % 360) * Math.PI) / 180;
     const speedFactor = Math.max(windSpeedKmh / 10.0, 0.7);
     const dx = Math.sin(transportRad) * speedFactor * 1.5;
@@ -562,7 +917,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           p.life = 0;
         }
 
-        const alpha = Math.sin((p.life / p.maxLife) * Math.PI) * 0.45;
+        const alpha = Math.sin((p.life / p.maxLife) * Math.PI) * 0.40;
         ctx.strokeStyle = `rgba(39, 211, 226, ${alpha})`;
         ctx.fillStyle = `rgba(39, 211, 226, ${alpha})`;
 
@@ -654,10 +1009,10 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
 
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
-      {/* 1. Underlying Leaflet Interactive Map Container */}
+      {/* 1. Underlying Leaflet Interactive Map Container (Layer 1) */}
       <div ref={mapContainerRef} style={{ width: '100%', height: '100%', zIndex: 1 }} />
 
-      {/* 2. WebGL Pollution Concentration Layer */}
+      {/* 2. WebGL Pollution Concentration Field (Layer 2) */}
       <canvas
         ref={canvasRef}
         style={{
@@ -672,7 +1027,23 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         }}
       />
 
-      {/* 3. Cyan Directional Wind Streamlines Canvas */}
+      {/* 3. Fine-Grained Atmospheric Particle Advection Canvas (Layer 5) */}
+      {layers.particles && (
+        <canvas
+          ref={particleCanvasRef}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: 14,
+          }}
+        />
+      )}
+
+      {/* 4. Cyan Directional Wind Streamlines Canvas (Layer 4) */}
       {layers.wind && (
         <canvas
           ref={windCanvasRef}
@@ -683,12 +1054,12 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
             width: '100%',
             height: '100%',
             pointerEvents: 'none',
-            zIndex: 15,
+            zIndex: 16,
           }}
         />
       )}
 
-      {/* 4. Real CPCB / DPCC Monitoring Stations Layer */}
+      {/* 5. Real CPCB / DPCC Monitoring Stations Layer (Layer 6a) */}
       {layers.stations && (
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 22 }}>
           {stationScreenCoords.map(({ id, sx, sy, data }) => {
@@ -711,6 +1082,10 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
                   setActiveSchoolData(null);
                   if (onSelectStation) onSelectStation(id);
                   if (onSelectLocality) onSelectLocality(id);
+                  if (mapInstanceRef.current) {
+                    const targetZoom = Math.max(mapInstanceRef.current.getZoom(), 13);
+                    mapInstanceRef.current.flyTo([data.lat, data.lon], targetZoom, { duration: 0.8 });
+                  }
                 }}
                 title={`${data.station_name} · Measured: ${data.current_obs_pm25} µg/m³`}
               >
@@ -728,7 +1103,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         </div>
       )}
 
-      {/* 5. Authentic Delhi Schools Layer */}
+      {/* 6. Authentic Delhi Schools Layer (Layer 6b) */}
       {layers.schools && (
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 24 }}>
           {schoolScreenCoords.map(({ id, sx, sy, data }) => {
@@ -753,6 +1128,10 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
                   setActivePin(null);
                   setActiveStationData(null);
                   if (onSelectSchool) onSelectSchool(id);
+                  if (mapInstanceRef.current) {
+                    const targetZoom = Math.max(mapInstanceRef.current.getZoom(), 13);
+                    mapInstanceRef.current.flyTo([data.lat, data.lon], targetZoom, { duration: 0.8 });
+                  }
                 }}
                 title={`${data.name_en} (${data.student_count.toLocaleString()} students)`}
               >
@@ -770,7 +1149,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         </div>
       )}
 
-      {/* 6. Inferred Model Hotspot Plumes Layer */}
+      {/* 7. Inferred Model Hotspot Plumes Layer (Layer 3) */}
       {layers.hotspots && (
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 26 }}>
           {pinScreenCoords.map(({ id, sx, sy, data }) => {
@@ -799,6 +1178,10 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
                   setActiveSchoolData(null);
                   if (onSelectHotspot) onSelectHotspot(id);
                   if (onSelectLocality) onSelectLocality(id);
+                  if (mapInstanceRef.current) {
+                    const targetZoom = Math.max(mapInstanceRef.current.getZoom(), 13);
+                    mapInstanceRef.current.flyTo([data.lat, data.lon], targetZoom, { duration: 0.8 });
+                  }
                 }}
               >
                 <span className="hotspot-marker-dot" style={{ background: catInfo.color }} />
@@ -812,9 +1195,9 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         </div>
       )}
 
-      {/* 7. FLOATING MAP OVERLAYS */}
+      {/* 8. FLOATING MAP OVERLAYS */}
 
-      {/* TOP-LEFT: Layers, Mode Toggle, Wind Toggle, Forecast Horizon Chips */}
+      {/* TOP-LEFT: Layers, Mode Toggle, Wind Toggle, Particles Toggle, Forecast Horizon Chips */}
       <div className="map-floating-panel map-ctrl-top-left">
         {/* Layer Selector */}
         <div style={{ position: 'relative' }}>
@@ -843,7 +1226,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
                 flexDirection: 'column',
                 gap: '8px',
                 zIndex: 60,
-                minWidth: '210px',
+                minWidth: '220px',
               }}
             >
               <div style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
@@ -881,8 +1264,39 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
                   onChange={(e) => setLayers({ ...layers, pollution: e.target.checked })}
                   style={{ accentColor: 'var(--accent-cyan)' }}
                 />
-                Pollution Dispersion Field
+                Concentration Field (Heatmap)
               </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                <input
+                  type="checkbox"
+                  checked={layers.particles}
+                  onChange={(e) => setLayers({ ...layers, particles: e.target.checked })}
+                  style={{ accentColor: 'var(--accent-cyan)' }}
+                />
+                Particle Transport (Advection)
+              </label>
+
+              {layers.particles && (
+                <div style={{ marginLeft: '22px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                    Particle Density:
+                  </div>
+                  <div style={{ display: 'flex', gap: '3px' }}>
+                    {(['auto', 'low', 'medium', 'high'] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        className={`segmented-pill-btn ${particleDensity === mode ? 'active' : ''}`}
+                        style={{ flex: 1, padding: '2px 4px', fontSize: '9.5px', textAlign: 'center' }}
+                        onClick={() => setParticleDensity(mode)}
+                      >
+                        {mode === 'auto' ? 'Auto' : mode.slice(0, 3)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', color: 'var(--text-secondary)' }}>
                 <input
@@ -891,7 +1305,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
                   onChange={(e) => setLayers({ ...layers, wind: e.target.checked })}
                   style={{ accentColor: 'var(--accent-cyan)' }}
                 />
-                Wind Vectors & Streamlines
+                Wind Vectors (Streamlines)
               </label>
 
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', color: 'var(--text-secondary)' }}>
@@ -937,6 +1351,16 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         </button>
 
         <div style={{ width: '1px', height: '14px', background: 'var(--border-subtle)' }} />
+
+        {/* Quick Particle Advection Toggle */}
+        <button
+          className={`horizon-chip ${layers.particles ? 'active' : ''}`}
+          onClick={() => setLayers({ ...layers, particles: !layers.particles })}
+          title="Toggle Atmospheric Particle Advection"
+        >
+          <ParticlesIcon size={13} color={layers.particles ? 'var(--accent-cyan)' : 'var(--text-secondary)'} />
+          <span>Particles</span>
+        </button>
 
         {/* Quick Wind Toggle */}
         <button

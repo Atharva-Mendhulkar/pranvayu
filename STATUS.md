@@ -32,8 +32,20 @@ Phase: PranVayu Geospatial Air Intelligence Platform v2 Overhaul
   - Distinct `.hotspot-pill-marker`: Rounded pill badges representing model-inferred localized concentration cores (PINN / atmospheric dispersion plumes).
   - 5-layer toggle control in top-left HUD allowing independent toggling of: (1) Pollution dispersion field, (2) Wind streamlines & vectors, (3) Inferred hotspot cores, (4) CPCB/DPCC stations, (5) Schools & academies.
 
+- **Atmospheric Particle Advection Engine & Granular Transport (`web/src/components/DelhiFluidMap.tsx`, `web/src/components/Icons.tsx`)**:
+  - Implemented Layer 5 dedicated 2D canvas overlay (`zIndex: 14`) between Three.js concentration field (`zIndex: 10`) and wind streamlines (`zIndex: 16`).
+  - True geographic $(\text{lat}, \text{lon})$ particle tracking using geodesic velocities:
+    $\Delta \text{lat} = \frac{v \cdot \Delta t}{R_E} \frac{180}{\pi}$, $\Delta \text{lon} = \frac{u \cdot \Delta t}{R_E \cos(\text{lat})} \frac{180}{\pi}$, reprojecting via `map.latLngToContainerPoint` each frame so particles remain physically anchored to roads, schools, and stations during pan and zoom.
+  - Concentration-weighted spawning: 72% spawn inside active Gaussian plume envelopes, 28% across the broader viewport for atmospheric context.
+  - Concentration-guided coloration: faint slate ($<35\,\mu\text{g/m}^3$), translucent amber ($35-90$), warm terracotta ($90-180$), and deep crimson ($>180$).
+  - Zoom-adaptive detail and particle budget: scales dynamically from 420 particles at regional overview ($z \le 10$), to 850 at city zoom ($z \le 12$), 1,350 at district zoom ($z \le 14$), and 1,800 at neighborhood zoom ($z \ge 15$).
+  - Multi-scale granules with short fading trails (3–8 history points) and subtle Yamuna valley channeling.
+  - Independent layer control: added dedicated "Particles" toggle with `ParticlesIcon`, density selector pills (`Auto`, `Low`, `Med`, `High`), and reduced-motion / visibilitychange handling with clamped $\Delta t \le 0.05\text{s}$.
+  - Deep-linking & neighborhood inspection: supported URL parameters (`?locality=...&zoom=...`) and smooth `flyTo` on selection.
+
 - **Full Verification & Quality Assurance**:
   - Zero brown/orange tint on basemap: pure obsidian/charcoal cartography.
   - 10/10 pytest unit tests passed offline (`make test`).
   - Production TypeScript and Vite builds passing with 0 lint errors (`make lint`).
-  - High-resolution visual screenshots captured at 1536x864 and verified with both stations and school schedules active.
+  - High-resolution visual screenshots captured and verified across regional, city, and neighborhood zooms (1536x864).
+

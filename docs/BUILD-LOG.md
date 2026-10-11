@@ -127,3 +127,14 @@
 - **Dedicated Schools Layer & Timetable Assessment**: Added 15 authentic Delhi institutions (`config/schools.json`, `web/src/data/schools.ts`) with lat/lon, student population, and nearest station distances. Added `.school-marker` (compact cyan square with mortarboard icon) and interactive popup/sidebar breakdown detailing outdoor activity verdicts across 4 periods (Morning Arrival, Assembly, Recess & PE, Afternoon Dispersal) with actionable guidance.
 - **CPCB / DPCC Monitoring Stations vs. Model Hotspots**: Separated real ground observation stations (`.station-marker` with neutral circular outline and concentric dot, OpenAQ IDs, BAM/TEOM metadata) from model-derived concentration plumes (`.hotspot-pill-marker`). Added 5-layer toggle control in top-left HUD.
 - **Validation**: Verified with `make test` (10/10 pytest passing offline), `make lint` (ruff + TypeScript 0 errors), and high-resolution headless Chrome screenshots confirming flawless visual rendering.
+
+### 2026-10-11 21:05 IST — Atmospheric Particle Advection Engine & Zoom-Aware Granular Transport
+- Implemented Layer 5 dedicated HTML5 2D canvas overlay (`zIndex: 14`) sandwiched between Three.js WebGL dispersion field (`zIndex: 10`) and wind streamlines (`zIndex: 16`).
+- Implemented true geographic $(\text{lat}, \text{lon})$ particle tracking using geodesic increments $\Delta \text{lat} = \frac{v \cdot \Delta t}{R_E} \frac{180}{\pi}$, $\Delta \text{lon} = \frac{u \cdot \Delta t}{R_E \cos(\text{lat})} \frac{180}{\pi}$, reprojecting via `map.latLngToContainerPoint` on each frame to completely eliminate screen-space drift during pan/zoom.
+- Concentration-guided spawning (72% plume envelope, 28% background) and local field coloration: faint slate ($<35\,\mu\text{g/m}^3$), translucent amber ($35-90$), warm terracotta ($90-180$), and deep crimson ($>180$), keeping wind vector styling (cyan) cleanly separated from particulate matter concentration.
+- Multi-scale granules with short fading trails (3–8 geodesic history points) and subtle Yamuna valley channeling.
+- Dynamic zoom-adaptive particle budget scaling from 420 particles at regional zoom ($z \le 10$) up to 1,800 particles at neighborhood zoom ($z \ge 15$).
+- Independent layer controls: dedicated "Particles" toggle in HUD, custom `ParticlesIcon` in `web/src/components/Icons.tsx`, particle density pills (`Auto`, `Low`, `Med`, `High`), and safety clamps ($\Delta t \le 0.05$s, reduced motion detection, visibilitychange pausing).
+- Added URL deep linking (`?locality=...&zoom=...`) and automated `flyTo` on hotspot/station/school selection.
+- Verified offline with `make test` (10/10 pytest passing), `make lint` (ruff and TypeScript 0 errors), and captured/validated high-resolution visual evidence across regional, city, and neighborhood scales.
+

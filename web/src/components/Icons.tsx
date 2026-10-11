@@ -246,3 +246,14 @@ export const AlertTriangleIcon: React.FC<IconProps> = ({ size = 16, color = 'cur
   </svg>
 );
 
+export const ParticlesIcon: React.FC<IconProps> = ({ size = 16, color = 'currentColor', className, style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
+    <circle cx="5" cy="8" r="1.5" fill={color} />
+    <circle cx="19" cy="7" r="1.5" fill={color} />
+    <circle cx="12" cy="12" r="1.5" fill={color} />
+    <circle cx="7" cy="17" r="1.5" fill={color} />
+    <circle cx="18" cy="16" r="1.5" fill={color} />
+  </svg>
+);
+
+

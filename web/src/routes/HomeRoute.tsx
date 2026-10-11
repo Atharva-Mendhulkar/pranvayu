@@ -53,13 +53,19 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
   const [windSpeedKmh] = useState<number>(14);
   const [windDirDeg] = useState<number>(315);
 
-  // Sync selected hotspot if locality changes from header
+  // Sync selected hotspot if locality changes from header or URL
   useEffect(() => {
-    if (payload.locality.id) {
+    const params = new URLSearchParams(window.location.search);
+    const locParam = params.get('locality');
+    if (locParam) {
+      setSelectedHotspotId(locParam);
+      setSelectedStationId(locParam);
+      onSelectLocality(locParam);
+    } else if (payload.locality.id) {
       setSelectedHotspotId(payload.locality.id);
       setSelectedStationId(payload.locality.id);
     }
-  }, [payload.locality.id]);
+  }, [payload.locality.id, onSelectLocality]);
 
   // Timeline scrubber autoplay loop
   useEffect(() => {
