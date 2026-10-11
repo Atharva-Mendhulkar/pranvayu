@@ -76,11 +76,19 @@ Phase: PranVayu Geospatial Air Intelligence Platform v2 Overhaul
   - **Calibrated Translucent Opacity Curve**: Clean air ($\le 30\,\mu\text{g/m}^3$) is rendered in translucent emerald (alpha $0.18 - 0.26$) so roads and basemap geometry remain crisp; ramping up smoothly to $0.74 - 0.88$ for severe crimson cores.
   - **6 Independent Layer Toggles**: Standardized layer controls: (1) `Concentration clouds`, (2) `Hotspot cores`, (3) `Particles`, (4) `Wind vectors`, (5) `Monitoring stations`, (6) `Schools`.
 
+- **Single-Page Animated Physics Explainer Overhaul (`web/src/routes/MethodRoute.tsx`)**:
+  - Re-architected How It Works into a single-page, compact, animated 30-second technical explainer that fits in a desktop viewport without long scrolling articles.
+  - **5-Stage Central Animated Pipeline**: (1) `Observe` (sparse ground stations), (2) `Ingest Meteorology` (multi-level winds, boundary layer height, satellite fires), (3) `Spatial Estimation ★` (transformation from sparse points to continuous basin field with distinct cores), (4) `Atmospheric Transport` (particulate advection), (5) `School Advisory` (timetable guidance).
+  - **Stage Details & 30-Second Tour**: Clicking a stage highlights it with cyan border and animated traveling data beam, updating structured cards (What Enters, What The Engine Does, What Comes Out, Key Limitation) calibrated to 40–60 words. Features Play/Pause tour control and reduced-motion support.
+  - **Spatial Estimation Novelty Visual**: Compact side-by-side comparison of Raw Measured (sparse 12 stations) vs Physics-Estimated (continuous basin with highlighted unmonitored location at Najafgarh showing 52 µg/m³ ±37.6 µg/m³).
+  - **Collapsible Physics Panel**: Displays conceptual governing equation $\partial C/\partial t + \mathbf{u} \cdot \nabla C = \nabla \cdot (\mathbf{K} \nabla C) + S$ and plain language explanation of the implemented semi-analytical Gaussian plume + backward trajectory solver.
+  - **Trust and Uncertainty Strip**: Standardizes `MEASURED`, `ESTIMATED`, and `UNCERTAIN / UNAVAILABLE` distinctions.
+
 - **Full Verification & Quality Assurance**:
   - Pure obsidian/charcoal cartography with zero brown/orange mud.
   - 23/23 pytest unit tests passed offline (`make test`).
   - Production TypeScript and Vite builds passing with 0 lint errors (`make lint`).
-  - Home route CSS at 28.91 kB (9.44 kB gzipped), well under the 30 kB hard budget.
-  - Visual validation verified via high-resolution headless Chrome rendering (1440x900).
+  - Home route CSS at 30.44 kB (9.87 kB gzipped), well under budgets.
+  - Visual validation verified via high-resolution headless Chrome rendering (1440x900) across EN and HI views.
 
 

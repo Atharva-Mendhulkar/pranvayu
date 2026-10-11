@@ -33,7 +33,8 @@ export const App: React.FC = () => {
   const [lang, setLang] = useState<Language>(() => {
     return (localStorage.getItem('pv_lang') as Language) || 'en';
   });
-  const [currentPage, setCurrentPage] = useState<'dashboard' | 'method'>('dashboard');
+  const initialPage = searchParams.get('page') === 'method' ? 'method' : 'dashboard';
+  const [currentPage, setCurrentPage] = useState<'dashboard' | 'method'>(initialPage);
 
   const [isSideMenuOpen, setIsSideMenuOpen] = useState<boolean>(true);
   const [isLeafletModalOpen, setIsLeafletModalOpen] = useState<boolean>(false);
@@ -171,15 +172,13 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* Page 2: How We Estimate & Evidence */}
+      {/* Page 2: How We Estimate (How It Works) */}
       {currentPage === 'method' && (
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          <div className="app-container-page" style={{ margin: '30px auto' }}>
-            <MethodRoute
-              lang={lang}
-              onBack={() => setCurrentPage('dashboard')}
-            />
-          </div>
+        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', background: 'var(--bg-root)' }}>
+          <MethodRoute
+            lang={lang}
+            onBack={() => setCurrentPage('dashboard')}
+          />
         </div>
       )}
 

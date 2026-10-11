@@ -221,3 +221,25 @@
   - `make test`: 23/23 pytest tests passing offline.
   - `make lint`: clean (ruff 0 warnings, tsc 0 errors, CSS bundle 28.91 kB / 9.44 kB gzipped).
   - Headless Chrome rendering verified: continuous emerald field blankets ventilated areas, warm amber/coral plumes mark transport corridors, high-intensity cores highlight Anand Vihar, Wazirpur, and Bawana, and moving particles flow coherently along wind streamlines.
+
+### 2026-10-11 22:45 IST — Single-Page Animated Physics Explainer (How It Works Overhaul)
+- **Eliminated Long Article & Multi-Page Clutter**:
+  - Re-architected `web/src/routes/MethodRoute.tsx` into a single-page, compact, animated 30-second technical explainer that fits comfortably within a desktop viewport (no long marketing scroll).
+  - Maintained PranVayu navigation, back button, dark palette (#080B0F, #0D1117, #111720, #252D37, #27D3E2), and bilingual EN/HI support.
+- **5-Stage Central Animated Pipeline**:
+  - Connected stages: (1) `01. Observe`, (2) `02. Ingest Meteorology`, (3) `03. Spatial Estimation ★`, (4) `04. Atmospheric Transport`, (5) `05. School Advisory`.
+  - Centerpiece transformation: Demonstrates sparse ground observations transforming into a continuous physics-informed concentration field with distinct localized cores.
+  - Interactive selection and 30-second auto-tour: Highlights active stage with cyan border and animated traveling data beam; updates structured explanation card (What Enters, What The Engine Does, What Comes Out, Most Important Limitation) strictly calibrated to 40–60 words.
+  - Respects `prefers-reduced-motion` and supports Play/Pause + stage stepper controls.
+- **Spatial Estimation Novelty Visual**:
+  - Side-by-side comparison of "RAW MEASURED (Sparse 12 Stations across 1,484 km²)" vs "PHYSICS-ESTIMATED (Continuous Basin Field)".
+  - Highlights unmonitored location (Najafgarh, 14.2 km from station) displaying actual model-derived values: `52 µg/m³ PM2.5`, uncertainty spread `±37.6 µg/m³` (derived from implemented $\sigma(d) = 12.0 + 1.8 \times 14.2$), and explicit model-derived status.
+- **Collapsible Physics Panel**:
+  - Displays conceptual governing equation: $\partial C/\partial t + \mathbf{u} \cdot \nabla C = \nabla \cdot (\mathbf{K} \nabla C) + S$.
+  - Explains the actual implemented semi-analytical physics-informed solution (co-axial Gaussian core/halo plumes + 2nd-order backward trajectories + rolling bias-corrected CAMS chemical boundary). Collapsed by default.
+- **Trust and Uncertainty Strip**:
+  - Clarifies three distinct data modalities: `MEASURED` (BAM/TEOM ground sensors), `ESTIMATED` (physics-informed spatial model), `UNCERTAIN / UNAVAILABLE` (distance-scaled uncertainty spread; out-of-domain is `-- µg/m³` and never painted green).
+- **Verification**:
+  - `make test`: 23/23 tests passing offline.
+  - `make lint`: clean (0 lint/type errors, CSS bundle 30.44 kB / 9.87 kB gzipped).
+  - Headless Chrome visual verification confirmed across English and Hindi views.

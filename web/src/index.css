@@ -819,3 +819,97 @@ button {
   background: var(--bg-surface-elevated) !important;
   border: 1px solid var(--border-subtle) !important;
 }
+
+/* =========================================================================
+   HOW IT WORKS: SINGLE-PAGE ANIMATED PIPELINE STYLES
+   ========================================================================= */
+
+@keyframes pulseRadar {
+  0% { transform: scale(1); opacity: 0.9; }
+  60% { transform: scale(2.4); opacity: 0; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+@keyframes flowDash {
+  0% { stroke-dashoffset: 36; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes pulseField {
+  0%, 100% { opacity: 0.75; transform: scale(0.97); }
+  50% { opacity: 1; transform: scale(1.03); }
+}
+
+@keyframes particleFlow {
+  0% { transform: translate(-14px, -10px); opacity: 0; }
+  25% { opacity: 0.95; }
+  75% { opacity: 0.95; }
+  100% { transform: translate(28px, 20px); opacity: 0; }
+}
+
+@keyframes travelDataBeam {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(500%); }
+}
+
+.radar-ring {
+  transform-origin: center;
+  animation: pulseRadar 2.2s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+}
+
+.flow-streamline {
+  stroke-dasharray: 6 4;
+  animation: flowDash 1.4s linear infinite;
+}
+
+.pulse-field {
+  transform-origin: center;
+  animation: pulseField 3.4s ease-in-out infinite;
+}
+
+.particle-flow-dot {
+  animation: particleFlow 2.0s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
+}
+
+.pipeline-stage-card {
+  background: #0D1117;
+  border: 1px solid #252D37;
+  border-radius: var(--radius-sm);
+  padding: 12px 10px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.pipeline-stage-card:hover {
+  border-color: rgba(39, 211, 226, 0.45);
+  background: #111720;
+}
+
+.pipeline-stage-card.active {
+  border-color: #27D3E2;
+  background: #111720;
+  box-shadow: 0 0 16px rgba(39, 211, 226, 0.15), inset 0 0 0 1px #27D3E2;
+}
+
+.pipeline-stage-card.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #27D3E2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radar-ring,
+  .flow-streamline,
+  .pulse-field,
+  .particle-flow-dot {
+    animation: none !important;
+  }
+}
