@@ -174,7 +174,7 @@ export const App: React.FC = () => {
 
       {/* Page 2: How We Estimate (How It Works) */}
       {currentPage === 'method' && (
-        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', background: 'var(--bg-root)' }}>
+        <div style={{ flex: 1, width: '100vw', height: 'calc(100vh - 64px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', background: 'var(--bg-root)' }}>
           <MethodRoute
             lang={lang}
             onBack={() => setCurrentPage('dashboard')}

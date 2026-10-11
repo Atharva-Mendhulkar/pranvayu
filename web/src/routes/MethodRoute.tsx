@@ -5,7 +5,6 @@ import {
   PauseIcon,
   WindIcon,
   ActivityIcon,
-  ShieldCheckIcon,
   SchoolIcon,
   StationIcon,
   AlertTriangleIcon,
@@ -144,13 +143,15 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
     <div
       style={{
         width: '100%',
-        maxWidth: '1240px',
-        margin: '0 auto',
-        padding: '16px 20px',
+        minHeight: '100%',
+        boxSizing: 'border-box',
+        padding: '20px 28px',
         display: 'flex',
         flexDirection: 'column',
+        justifyContent: 'space-between',
         gap: '14px',
         color: 'var(--text-primary)',
+        background: 'var(--bg-root)',
       }}
     >
       {/* =====================================================================
@@ -162,25 +163,25 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
           flexWrap: 'wrap',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: '12px',
-          paddingBottom: '10px',
+          gap: '14px',
+          paddingBottom: '12px',
           borderBottom: '1px solid var(--border-subtle)',
         }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
             <button
               onClick={onBack}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '5px',
-                fontSize: '11px',
+                fontSize: '11.5px',
                 fontWeight: 600,
                 color: 'var(--accent-cyan)',
                 background: 'rgba(39, 211, 226, 0.08)',
-                border: '1px solid rgba(39, 211, 226, 0.25)',
-                padding: '3px 8px',
+                border: '1px solid rgba(39, 211, 226, 0.28)',
+                padding: '4px 10px',
                 borderRadius: '4px',
                 cursor: 'pointer',
               }}
@@ -189,13 +190,13 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
             </button>
             <span
               style={{
-                fontSize: '9.5px',
+                fontSize: '10px',
                 fontWeight: 700,
                 letterSpacing: '0.6px',
                 textTransform: 'uppercase',
                 color: 'var(--text-muted)',
                 background: '#111720',
-                padding: '3px 8px',
+                padding: '4px 10px',
                 borderRadius: '4px',
                 border: '1px solid #252D37',
               }}
@@ -206,7 +207,7 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
 
           <h1
             style={{
-              fontSize: '22px',
+              fontSize: '25px',
               fontWeight: 800,
               letterSpacing: '-0.3px',
               margin: '0 0 2px 0',
@@ -215,7 +216,7 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
           >
             {lang === 'hi' ? 'प्राणवायु कैसे काम करता है' : 'HOW PRANVAYU WORKS'}
           </h1>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
             {lang === 'hi'
               ? 'सीमित निगरानी केंद्रों से भौतिकी-आधारित स्थानिक वायु अनुमान तक।'
               : 'From sparse monitoring stations to physics-informed spatial estimates.'}
@@ -228,19 +229,19 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'flex-end',
-            gap: '6px',
+            gap: '8px',
           }}
         >
           <div
             style={{
-              fontSize: '12px',
+              fontSize: '13px',
               fontWeight: 600,
               color: 'var(--accent-cyan)',
               fontStyle: 'italic',
-              background: 'rgba(39, 211, 226, 0.06)',
-              padding: '4px 10px',
+              background: 'rgba(39, 211, 226, 0.08)',
+              padding: '6px 14px',
               borderRadius: '4px',
-              border: '1px solid rgba(39, 211, 226, 0.20)',
+              border: '1px solid rgba(39, 211, 226, 0.25)',
             }}
           >
             &ldquo;
@@ -250,30 +251,30 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
             &rdquo;
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               onClick={() => setIsPlaying(!isPlaying)}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '5px',
-                fontSize: '11px',
+                gap: '6px',
+                fontSize: '11.5px',
                 fontWeight: 600,
                 color: isPlaying ? 'var(--text-primary)' : 'var(--accent-cyan)',
                 background: '#111720',
                 border: '1px solid #252D37',
-                padding: '4px 10px',
+                padding: '5px 12px',
                 borderRadius: '4px',
                 cursor: 'pointer',
               }}
               title={isPlaying ? 'Pause 30-second tour' : 'Play 30-second tour'}
             >
-              {isPlaying ? <PauseIcon size={12} color="var(--accent-cyan)" /> : <PlayIcon size={12} color="var(--accent-cyan)" />}
+              {isPlaying ? <PauseIcon size={13} color="var(--accent-cyan)" /> : <PlayIcon size={13} color="var(--accent-cyan)" />}
               <span>{isPlaying ? (lang === 'hi' ? 'रोकें' : 'Pause Tour') : (lang === 'hi' ? 'दौरा चलाएं' : 'Play Tour')}</span>
             </button>
 
             {/* Stepper Pills */}
-            <div style={{ display: 'flex', gap: '3px' }}>
+            <div style={{ display: 'flex', gap: '4px' }}>
               {STAGES.map((s, idx) => (
                 <button
                   key={s.id}
@@ -282,13 +283,13 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
                     setIsPlaying(false);
                   }}
                   style={{
-                    fontSize: '10px',
+                    fontSize: '10.5px',
                     fontWeight: 700,
-                    padding: '3px 7px',
-                    borderRadius: '3px',
+                    padding: '4px 9px',
+                    borderRadius: '4px',
                     border: '1px solid',
                     borderColor: activeStage === idx ? 'var(--accent-cyan)' : '#252D37',
-                    background: activeStage === idx ? 'rgba(39, 211, 226, 0.15)' : '#0D1117',
+                    background: activeStage === idx ? 'rgba(39, 211, 226, 0.16)' : '#0D1117',
                     color: activeStage === idx ? 'var(--accent-cyan)' : 'var(--text-muted)',
                     cursor: 'pointer',
                   }}
@@ -309,7 +310,7 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-            gap: '10px',
+            gap: '12px',
             position: 'relative',
           }}
         >
@@ -321,15 +322,15 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
               setIsPlaying(false);
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>01. OBSERVE</span>
-              <StationIcon size={13} color="var(--accent-cyan)" />
+              <StationIcon size={14} color="var(--accent-cyan)" />
             </div>
 
             {/* Visual 1: Sparse ground observations map */}
             <div
               style={{
-                height: '92px',
+                height: '120px',
                 background: '#080B0F',
                 borderRadius: '4px',
                 border: '1px solid #1C242D',
@@ -338,52 +339,52 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginBottom: '8px',
+                marginBottom: '10px',
               }}
             >
-              <svg width="100%" height="100%" viewBox="0 0 180 90">
+              <svg width="100%" height="100%" viewBox="0 0 190 95">
                 {/* Delhi territory outline */}
                 <path
-                  d="M 30,25 Q 70,12 110,20 Q 155,30 145,65 Q 120,80 80,75 Q 35,70 30,25 Z"
+                  d="M 30,25 Q 70,12 115,20 Q 165,30 155,68 Q 125,85 80,78 Q 35,72 30,25 Z"
                   fill="none"
                   stroke="#1C242D"
                   strokeWidth="1.2"
                   strokeDasharray="2 2"
                 />
                 {/* Station 1: Anand Vihar */}
-                <g transform="translate(130, 42)">
-                  <circle cx="0" cy="0" r="8" fill="none" stroke="#D94E49" strokeWidth="1" className="radar-ring" />
-                  <circle cx="0" cy="0" r="3.5" fill="#D94E49" />
-                  <text x="5" y="-3" fill="#D94E49" fontSize="8" fontWeight="700">318</text>
+                <g transform="translate(138, 45)">
+                  <circle cx="0" cy="0" r="10" fill="none" stroke="#D94E49" strokeWidth="1" className="radar-ring" />
+                  <circle cx="0" cy="0" r="4" fill="#D94E49" />
+                  <text x="6" y="-3" fill="#D94E49" fontSize="8.5" fontWeight="700">318</text>
                 </g>
                 {/* Station 2: Dwarka */}
-                <g transform="translate(52, 60)">
-                  <circle cx="0" cy="0" r="7" fill="none" stroke="#E77A43" strokeWidth="1" className="radar-ring" style={{ animationDelay: '0.6s' }} />
-                  <circle cx="0" cy="0" r="3" fill="#E77A43" />
-                  <text x="-16" y="2" fill="#E77A43" fontSize="8" fontWeight="700">165</text>
+                <g transform="translate(54, 62)">
+                  <circle cx="0" cy="0" r="9" fill="none" stroke="#E77A43" strokeWidth="1" className="radar-ring" style={{ animationDelay: '0.6s' }} />
+                  <circle cx="0" cy="0" r="3.5" fill="#E77A43" />
+                  <text x="-18" y="2" fill="#E77A43" fontSize="8.5" fontWeight="700">165</text>
                 </g>
                 {/* Station 3: Rohini */}
-                <g transform="translate(68, 26)">
-                  <circle cx="0" cy="0" r="7" fill="none" stroke="#E77A43" strokeWidth="1" className="radar-ring" style={{ animationDelay: '1.2s' }} />
-                  <circle cx="0" cy="0" r="3" fill="#E77A43" />
-                  <text x="4" y="-3" fill="#E77A43" fontSize="8" fontWeight="700">205</text>
+                <g transform="translate(72, 28)">
+                  <circle cx="0" cy="0" r="9" fill="none" stroke="#E77A43" strokeWidth="1" className="radar-ring" style={{ animationDelay: '1.2s' }} />
+                  <circle cx="0" cy="0" r="3.5" fill="#E77A43" />
+                  <text x="5" y="-3" fill="#E77A43" fontSize="8.5" fontWeight="700">205</text>
                 </g>
                 {/* Station 4: RK Puram */}
-                <g transform="translate(90, 50)">
-                  <circle cx="0" cy="0" r="3" fill="#D2A34D" />
-                  <text x="4" y="3" fill="#D2A34D" fontSize="7.5" fontWeight="600">180</text>
+                <g transform="translate(95, 52)">
+                  <circle cx="0" cy="0" r="3.5" fill="#D2A34D" />
+                  <text x="5" y="3" fill="#D2A34D" fontSize="8" fontWeight="600">180</text>
                 </g>
                 {/* Empty vast space interrogatives */}
-                <text x="88" y="34" fill="#3A4656" fontSize="9" fontWeight="700">?</text>
-                <text x="40" y="42" fill="#3A4656" fontSize="9" fontWeight="700">?</text>
-                <text x="120" y="70" fill="#3A4656" fontSize="9" fontWeight="700">?</text>
+                <text x="92" y="36" fill="#3A4656" fontSize="10" fontWeight="700">?</text>
+                <text x="42" y="44" fill="#3A4656" fontSize="10" fontWeight="700">?</text>
+                <text x="125" y="74" fill="#3A4656" fontSize="10" fontWeight="700">?</text>
               </svg>
             </div>
 
-            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '3px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '3px' }}>
               {lang === 'hi' ? STAGES[0].title_hi : STAGES[0].title_en}
             </div>
-            <div style={{ fontSize: '10.5px', color: 'var(--text-secondary)', lineHeight: '14px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: '15px' }}>
               {lang === 'hi' ? STAGES[0].caption_hi : STAGES[0].caption_en}
             </div>
           </div>
@@ -396,15 +397,15 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
               setIsPlaying(false);
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>02. INGEST</span>
-              <WindIcon size={13} color="var(--accent-cyan)" />
+              <WindIcon size={14} color="var(--accent-cyan)" />
             </div>
 
             {/* Visual 2: Ingest meteorology vectors */}
             <div
               style={{
-                height: '92px',
+                height: '120px',
                 background: '#080B0F',
                 borderRadius: '4px',
                 border: '1px solid #1C242D',
@@ -413,36 +414,36 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginBottom: '8px',
+                marginBottom: '10px',
               }}
             >
-              <svg width="100%" height="100%" viewBox="0 0 180 90">
+              <svg width="100%" height="100%" viewBox="0 0 190 95">
                 {/* Incoming NW wind arrows */}
-                <path d="M 15,15 L 75,45" stroke="#27D3E2" strokeWidth="1.5" className="flow-streamline" />
-                <polygon points="75,45 66,41 68,48" fill="#27D3E2" />
+                <path d="M 15,15 L 80,48" stroke="#27D3E2" strokeWidth="1.6" className="flow-streamline" />
+                <polygon points="80,48 71,44 73,51" fill="#27D3E2" />
 
-                <path d="M 45,10 L 115,45" stroke="#27D3E2" strokeWidth="1.8" className="flow-streamline" style={{ animationDelay: '0.3s' }} />
-                <polygon points="115,45 106,41 108,48" fill="#27D3E2" />
+                <path d="M 45,10 L 125,48" stroke="#27D3E2" strokeWidth="2.0" className="flow-streamline" style={{ animationDelay: '0.3s' }} />
+                <polygon points="125,48 116,44 118,51" fill="#27D3E2" />
 
-                <path d="M 85,15 L 145,50" stroke="#27D3E2" strokeWidth="1.5" className="flow-streamline" style={{ animationDelay: '0.6s' }} />
-                <polygon points="145,50 136,46 138,53" fill="#27D3E2" />
+                <path d="M 85,15 L 155,52" stroke="#27D3E2" strokeWidth="1.6" className="flow-streamline" style={{ animationDelay: '0.6s' }} />
+                <polygon points="155,52 146,48 148,55" fill="#27D3E2" />
 
                 {/* Satellite active fire anomaly tag */}
                 <g transform="translate(18, 18)">
-                  <circle cx="0" cy="0" r="3" fill="#E77A43" />
-                  <text x="5" y="3" fill="#E77A43" fontSize="7" fontWeight="600">VIIRS FIRMS</text>
+                  <circle cx="0" cy="0" r="3.5" fill="#E77A43" />
+                  <text x="6" y="3" fill="#E77A43" fontSize="7.5" fontWeight="600">VIIRS FIRMS</text>
                 </g>
 
                 {/* Boundary layer label badge */}
-                <rect x="80" y="65" width="85" height="16" rx="3" fill="#111720" stroke="#252D37" strokeWidth="0.8" />
-                <text x="86" y="76" fill="#A1ACB8" fontSize="7.5" fontWeight="600">NW 14 km/h · PBLH 850m</text>
+                <rect x="80" y="70" width="95" height="18" rx="3" fill="#111720" stroke="#252D37" strokeWidth="0.8" />
+                <text x="86" y="82" fill="#A1ACB8" fontSize="8" fontWeight="600">NW 14 km/h · PBLH 850m</text>
               </svg>
             </div>
 
-            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '3px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '3px' }}>
               {lang === 'hi' ? STAGES[1].title_hi : STAGES[1].title_en}
             </div>
-            <div style={{ fontSize: '10.5px', color: 'var(--text-secondary)', lineHeight: '14px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: '15px' }}>
               {lang === 'hi' ? STAGES[1].caption_hi : STAGES[1].caption_en}
             </div>
           </div>
@@ -455,15 +456,15 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
               setIsPlaying(false);
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent-cyan)' }}>03. ESTIMATE ★</span>
-              <ActivityIcon size={13} color="var(--accent-cyan)" />
+              <ActivityIcon size={14} color="var(--accent-cyan)" />
             </div>
 
             {/* Visual 3: Continuous spatial concentration field */}
             <div
               style={{
-                height: '92px',
+                height: '120px',
                 background: '#080B0F',
                 borderRadius: '4px',
                 border: '1px solid #1C242D',
@@ -472,10 +473,10 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginBottom: '8px',
+                marginBottom: '10px',
               }}
             >
-              <svg width="100%" height="100%" viewBox="0 0 180 90">
+              <svg width="100%" height="100%" viewBox="0 0 190 95">
                 <defs>
                   {/* Clean regional emerald gradient */}
                   <radialGradient id="cleanField" cx="45%" cy="50%" r="55%">
@@ -498,32 +499,32 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
                 </defs>
 
                 {/* Base basin continuous green field */}
-                <rect x="0" y="0" width="180" height="90" fill="url(#cleanField)" />
+                <rect x="0" y="0" width="190" height="95" fill="url(#cleanField)" />
                 {/* Advection tongue */}
-                <path d="M 20,10 Q 90,30 150,65 Q 130,85 70,55 Z" fill="url(#plumeAdvect)" className="pulse-field" />
+                <path d="M 20,10 Q 95,32 160,70 Q 140,90 75,60 Z" fill="url(#plumeAdvect)" className="pulse-field" />
                 {/* Anand Vihar hotspot core */}
-                <circle cx="130" cy="45" r="22" fill="url(#hotCore)" />
+                <circle cx="140" cy="48" r="24" fill="url(#hotCore)" />
                 {/* Wazirpur hotspot core */}
-                <circle cx="85" cy="32" r="15" fill="url(#hotCore)" />
+                <circle cx="90" cy="34" r="16" fill="url(#hotCore)" />
 
                 {/* Continuous contour lines */}
-                <path d="M 40,25 Q 90,45 140,40" stroke="#9AAB55" strokeWidth="0.8" fill="none" opacity="0.6" />
-                <path d="M 45,45 Q 95,65 145,60" stroke="#2F7656" strokeWidth="0.8" fill="none" opacity="0.6" />
+                <path d="M 40,25 Q 95,48 150,42" stroke="#9AAB55" strokeWidth="0.8" fill="none" opacity="0.6" />
+                <path d="M 45,45 Q 100,68 155,62" stroke="#2F7656" strokeWidth="0.8" fill="none" opacity="0.6" />
 
                 {/* Measurement anchors */}
-                <circle cx="130" cy="45" r="2.5" fill="#FFF" />
-                <circle cx="52" cy="60" r="2" fill="#FFF" />
-                <circle cx="68" cy="26" r="2" fill="#FFF" />
+                <circle cx="140" cy="48" r="3" fill="#FFF" />
+                <circle cx="54" cy="62" r="2.5" fill="#FFF" />
+                <circle cx="72" cy="28" r="2.5" fill="#FFF" />
 
-                <text x="8" y="80" fill="#2F7656" fontSize="7.5" fontWeight="700">Verified Clean (SW)</text>
-                <text x="100" y="16" fill="#D94E49" fontSize="7.5" fontWeight="700">Hotspot Plume (East)</text>
+                <text x="8" y="85" fill="#2F7656" fontSize="8" fontWeight="700">Verified Clean (SW)</text>
+                <text x="105" y="18" fill="#D94E49" fontSize="8" fontWeight="700">Hotspot Plume (East)</text>
               </svg>
             </div>
 
-            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--accent-cyan)', marginBottom: '3px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-cyan)', marginBottom: '3px' }}>
               {lang === 'hi' ? STAGES[2].title_hi : STAGES[2].title_en}
             </div>
-            <div style={{ fontSize: '10.5px', color: 'var(--text-secondary)', lineHeight: '14px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: '15px' }}>
               {lang === 'hi' ? STAGES[2].caption_hi : STAGES[2].caption_en}
             </div>
           </div>
@@ -536,15 +537,15 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
               setIsPlaying(false);
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>04. TRANSPORT</span>
-              <WindIcon size={13} color="var(--accent-cyan)" />
+              <WindIcon size={14} color="var(--accent-cyan)" />
             </div>
 
             {/* Visual 4: Particle advection & transport */}
             <div
               style={{
-                height: '92px',
+                height: '120px',
                 background: '#080B0F',
                 borderRadius: '4px',
                 border: '1px solid #1C242D',
@@ -553,32 +554,32 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginBottom: '8px',
+                marginBottom: '10px',
               }}
             >
-              <svg width="100%" height="100%" viewBox="0 0 180 90">
+              <svg width="100%" height="100%" viewBox="0 0 190 95">
                 {/* Streamlines */}
-                <path d="M 20,20 C 60,35 110,45 160,65" stroke="rgba(39, 211, 226, 0.45)" strokeWidth="1" fill="none" />
-                <path d="M 30,40 C 70,55 120,65 170,80" stroke="rgba(39, 211, 226, 0.45)" strokeWidth="1" fill="none" />
-                <path d="M 10,10 C 50,25 100,35 150,55" stroke="rgba(39, 211, 226, 0.35)" strokeWidth="0.8" fill="none" />
+                <path d="M 20,20 C 65,35 120,48 170,70" stroke="rgba(39, 211, 226, 0.45)" strokeWidth="1" fill="none" />
+                <path d="M 30,42 C 75,58 130,68 180,85" stroke="rgba(39, 211, 226, 0.45)" strokeWidth="1" fill="none" />
+                <path d="M 10,10 C 55,25 110,38 160,58" stroke="rgba(39, 211, 226, 0.35)" strokeWidth="0.8" fill="none" />
 
                 {/* Moving Particles */}
-                <circle cx="50" cy="30" r="2.2" fill="#E77A43" className="particle-flow-dot" />
-                <circle cx="85" cy="42" r="2.5" fill="#D94E49" className="particle-flow-dot" style={{ animationDelay: '0.4s' }} />
-                <circle cx="115" cy="50" r="2.0" fill="#E77A43" className="particle-flow-dot" style={{ animationDelay: '0.8s' }} />
-                <circle cx="70" cy="53" r="1.8" fill="#D2A34D" className="particle-flow-dot" style={{ animationDelay: '1.2s' }} />
-                <circle cx="135" cy="58" r="2.2" fill="#D94E49" className="particle-flow-dot" style={{ animationDelay: '1.5s' }} />
+                <circle cx="55" cy="32" r="2.4" fill="#E77A43" className="particle-flow-dot" />
+                <circle cx="92" cy="45" r="2.8" fill="#D94E49" className="particle-flow-dot" style={{ animationDelay: '0.4s' }} />
+                <circle cx="125" cy="54" r="2.2" fill="#E77A43" className="particle-flow-dot" style={{ animationDelay: '0.8s' }} />
+                <circle cx="75" cy="58" r="2.0" fill="#D2A34D" className="particle-flow-dot" style={{ animationDelay: '1.2s' }} />
+                <circle cx="145" cy="62" r="2.4" fill="#D94E49" className="particle-flow-dot" style={{ animationDelay: '1.5s' }} />
 
                 {/* Horizon displacement tag */}
-                <rect x="12" y="66" width="60" height="15" rx="3" fill="#111720" stroke="#252D37" strokeWidth="0.8" />
-                <text x="17" y="77" fill="#27D3E2" fontSize="7.5" fontWeight="700">t = +0h → +24h</text>
+                <rect x="12" y="70" width="70" height="17" rx="3" fill="#111720" stroke="#252D37" strokeWidth="0.8" />
+                <text x="18" y="82" fill="#27D3E2" fontSize="8" fontWeight="700">t = +0h → +24h</text>
               </svg>
             </div>
 
-            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '3px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '3px' }}>
               {lang === 'hi' ? STAGES[3].title_hi : STAGES[3].title_en}
             </div>
-            <div style={{ fontSize: '10.5px', color: 'var(--text-secondary)', lineHeight: '14px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: '15px' }}>
               {lang === 'hi' ? STAGES[3].caption_hi : STAGES[3].caption_en}
             </div>
           </div>
@@ -591,15 +592,15 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
               setIsPlaying(false);
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>05. ADVISE</span>
-              <SchoolIcon size={13} color="var(--accent-cyan)" />
+              <SchoolIcon size={14} color="var(--accent-cyan)" />
             </div>
 
             {/* Visual 5: School advisory card over field */}
             <div
               style={{
-                height: '92px',
+                height: '120px',
                 background: '#080B0F',
                 borderRadius: '4px',
                 border: '1px solid #1C242D',
@@ -608,18 +609,18 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',
-                padding: '8px 10px',
-                marginBottom: '8px',
-                gap: '4px',
+                padding: '10px 12px',
+                marginBottom: '10px',
+                gap: '5px',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '9px', fontWeight: 600, color: 'var(--text-muted)' }}>Sanskriti School</span>
+                <span style={{ fontSize: '9.5px', fontWeight: 600, color: 'var(--text-muted)' }}>Sanskriti School</span>
                 <span
                   style={{
-                    fontSize: '8px',
+                    fontSize: '8.5px',
                     fontWeight: 700,
-                    padding: '1px 5px',
+                    padding: '2px 6px',
                     borderRadius: '3px',
                     background: 'rgba(210, 163, 77, 0.20)',
                     color: '#D2A34D',
@@ -630,21 +631,21 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
                 </span>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)' }}>148</span>
-                <span style={{ fontSize: '8.5px', color: 'var(--text-muted)' }}>µg/m³ PM2.5 (Mod)</span>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px' }}>
+                <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>148</span>
+                <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>µg/m³ PM2.5 (Mod)</span>
               </div>
 
-              <div style={{ fontSize: '8px', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: '8.5px', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
                 <span>Arrival (07:30): <strong style={{ color: '#D94E49' }}>Skip</strong></span>
                 <span>Recess (11:30): <strong style={{ color: '#2F7656' }}>Go</strong></span>
               </div>
             </div>
 
-            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '3px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '3px' }}>
               {lang === 'hi' ? STAGES[4].title_hi : STAGES[4].title_en}
             </div>
-            <div style={{ fontSize: '10.5px', color: 'var(--text-secondary)', lineHeight: '14px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: '15px' }}>
               {lang === 'hi' ? STAGES[4].caption_hi : STAGES[4].caption_en}
             </div>
           </div>
@@ -653,11 +654,11 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
         {/* Animated Directional Data Flow Beam between Stages */}
         <div
           style={{
-            height: '2px',
+            height: '3px',
             background: '#1C242D',
             position: 'relative',
             overflow: 'hidden',
-            borderRadius: '1px',
+            borderRadius: '2px',
           }}
         >
           <div
@@ -679,45 +680,45 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
             background: '#0D1117',
             border: '1px solid #252D37',
             borderRadius: 'var(--radius-sm)',
-            padding: '12px 16px',
+            padding: '14px 20px',
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: '12px',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
+            gap: '16px',
           }}
         >
           <div>
-            <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '3px' }}>
+            <div style={{ fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '4px' }}>
               {lang === 'hi' ? 'प्रवेश (What Enters)' : 'What Enters This Stage'}
             </div>
-            <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
               {lang === 'hi' ? current.enters_hi : current.enters_en}
             </div>
           </div>
 
           <div>
-            <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '3px' }}>
+            <div style={{ fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '4px' }}>
               {lang === 'hi' ? 'इंजन प्रक्रिया (Engine Action)' : 'What The Engine Does'}
             </div>
-            <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
               {lang === 'hi' ? current.engine_hi : current.engine_en}
             </div>
           </div>
 
           <div>
-            <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '3px' }}>
+            <div style={{ fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '4px' }}>
               {lang === 'hi' ? 'निर्गम (What Comes Out)' : 'What Comes Out'}
             </div>
-            <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
               {lang === 'hi' ? current.exits_hi : current.exits_en}
             </div>
           </div>
 
           <div>
-            <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', color: '#E77A43', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <AlertTriangleIcon size={11} color="#E77A43" />
+            <div style={{ fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', color: '#E77A43', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <AlertTriangleIcon size={12} color="#E77A43" />
               <span>{lang === 'hi' ? 'मुख्य सीमा (Key Limitation)' : 'Most Important Limitation'}</span>
             </div>
-            <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.45 }}>
               {lang === 'hi' ? current.limit_hi : current.limit_en}
             </div>
           </div>
@@ -730,8 +731,8 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
       <section
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: '12px',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+          gap: '14px',
         }}
       >
         {/* Comparison Card: Measured vs. Estimated */}
@@ -740,43 +741,43 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
             background: '#0D1117',
             border: '1px solid #252D37',
             borderRadius: 'var(--radius-sm)',
-            padding: '14px 16px',
+            padding: '16px 20px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '10px',
+            gap: '12px',
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
               {lang === 'hi' ? 'स्थानिक अनुमान नवीनता' : 'Spatial Estimation Novelty'}
             </span>
-            <span style={{ fontSize: '9.5px', color: 'var(--text-muted)' }}>
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
               {lang === 'hi' ? 'वास्तविक मॉडल डेटा पर आधारित' : 'Illustrative example · Actual continuous field logic'}
             </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             {/* Left: MEASURED (Sparse Points Only) */}
             <div
               style={{
                 background: '#080B0F',
                 border: '1px solid #1C242D',
                 borderRadius: '4px',
-                padding: '10px',
+                padding: '12px',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '8px',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)' }}>RAW MEASURED</span>
-                <span style={{ fontSize: '8.5px', color: 'var(--text-muted)' }}>Sparse 12 Stations</span>
+                <span style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--text-muted)' }}>RAW MEASURED</span>
+                <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>Sparse 12 Stations</span>
               </div>
 
               {/* Graphic: 4 isolated dots with empty void */}
               <div
                 style={{
-                  height: '75px',
+                  height: '100px',
                   background: '#05070A',
                   borderRadius: '3px',
                   position: 'relative',
@@ -786,20 +787,20 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
                   border: '1px dashed #252D37',
                 }}
               >
-                <div style={{ position: 'absolute', top: '15px', right: '15px', textAlign: 'center' }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#D94E49', margin: '0 auto' }} />
-                  <span style={{ fontSize: '7.5px', color: '#D94E49', fontWeight: 700 }}>Anand Vihar: 318</span>
+                <div style={{ position: 'absolute', top: '18px', right: '18px', textAlign: 'center' }}>
+                  <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#D94E49', margin: '0 auto' }} />
+                  <span style={{ fontSize: '8px', color: '#D94E49', fontWeight: 700 }}>Anand Vihar: 318</span>
                 </div>
-                <div style={{ position: 'absolute', bottom: '15px', left: '15px', textAlign: 'center' }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#E77A43', margin: '0 auto' }} />
-                  <span style={{ fontSize: '7.5px', color: '#E77A43', fontWeight: 700 }}>Dwarka: 165</span>
+                <div style={{ position: 'absolute', bottom: '18px', left: '18px', textAlign: 'center' }}>
+                  <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#E77A43', margin: '0 auto' }} />
+                  <span style={{ fontSize: '8px', color: '#E77A43', fontWeight: 700 }}>Dwarka: 165</span>
                 </div>
-                <div style={{ fontSize: '10px', color: '#3A4656', fontWeight: 600 }}>
+                <div style={{ fontSize: '11px', color: '#3A4656', fontWeight: 600 }}>
                   [ Unmonitored Void ]
                 </div>
               </div>
 
-              <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', lineHeight: 1.3 }}>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', lineHeight: 1.35 }}>
                 {lang === 'hi'
                   ? 'निगरानी केंद्रों के बीच 95%+ क्षेत्र में कोई वास्तविक माप नहीं होता।'
                   : 'Vast neighborhoods between stations have zero sensor readings.'}
@@ -812,21 +813,21 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
                 background: '#080B0F',
                 border: '1px solid rgba(39, 211, 226, 0.35)',
                 borderRadius: '4px',
-                padding: '10px',
+                padding: '12px',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '8px',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--accent-cyan)' }}>PHYSICS-ESTIMATED</span>
-                <span style={{ fontSize: '8.5px', color: 'var(--accent-cyan)' }}>Continuous Basin</span>
+                <span style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--accent-cyan)' }}>PHYSICS-ESTIMATED</span>
+                <span style={{ fontSize: '9px', color: 'var(--accent-cyan)' }}>Continuous Basin</span>
               </div>
 
               {/* Graphic: Continuous emerald/amber field with target reticle at Najafgarh */}
               <div
                 style={{
-                  height: '75px',
+                  height: '100px',
                   background: 'linear-gradient(135deg, #18382E 0%, #2F7656 35%, #D2A34D 70%, #D94E49 100%)',
                   borderRadius: '3px',
                   position: 'relative',
@@ -837,28 +838,28 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
                 }}
               >
                 {/* Station anchors */}
-                <div style={{ position: 'absolute', top: '15px', right: '15px', width: '5px', height: '5px', borderRadius: '50%', background: '#FFF' }} />
-                <div style={{ position: 'absolute', bottom: '15px', left: '15px', width: '5px', height: '5px', borderRadius: '50%', background: '#FFF' }} />
+                <div style={{ position: 'absolute', top: '18px', right: '18px', width: '6px', height: '6px', borderRadius: '50%', background: '#FFF' }} />
+                <div style={{ position: 'absolute', bottom: '18px', left: '18px', width: '6px', height: '6px', borderRadius: '50%', background: '#FFF' }} />
 
                 {/* Highlighted unmonitored location (Najafgarh) */}
                 <div
                   style={{
-                    background: 'rgba(11, 15, 20, 0.90)',
+                    background: 'rgba(11, 15, 20, 0.92)',
                     border: '1px solid #27D3E2',
                     borderRadius: '4px',
-                    padding: '4px 8px',
+                    padding: '6px 10px',
                     textAlign: 'center',
                   }}
                 >
-                  <div style={{ fontSize: '8px', color: 'var(--text-muted)' }}>Najafgarh (14.2 km from station)</div>
-                  <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--accent-cyan)' }}>
-                    52 µg/m³ <span style={{ fontSize: '8px', fontWeight: 600, color: '#A1ACB8' }}>±37.6 µg/m³</span>
+                  <div style={{ fontSize: '8.5px', color: 'var(--text-muted)' }}>Najafgarh (14.2 km from station)</div>
+                  <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--accent-cyan)' }}>
+                    52 µg/m³ <span style={{ fontSize: '9px', fontWeight: 600, color: '#A1ACB8' }}>±37.6 µg/m³</span>
                   </div>
-                  <div style={{ fontSize: '7px', color: 'var(--text-secondary)' }}>Model-derived · Not measured</div>
+                  <div style={{ fontSize: '7.5px', color: 'var(--text-secondary)' }}>Model-derived · Not measured</div>
                 </div>
               </div>
 
-              <div style={{ fontSize: '9.5px', color: 'var(--text-secondary)', lineHeight: 1.3 }}>
+              <div style={{ fontSize: '10px', color: 'var(--text-secondary)', lineHeight: 1.35 }}>
                 {lang === 'hi'
                   ? 'भौतिकी-आधारित विसर्जन और दूरी-आधारित अनिश्चितता के साथ संपूर्ण बेसिन का अनुमान।'
                   : 'Physics-informed dispersion with distance-scaled uncertainty spread.'}
@@ -875,10 +876,10 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
             background: '#0D1117',
             border: '1px solid #252D37',
             borderRadius: 'var(--radius-sm)',
-            padding: '14px 16px',
+            padding: '16px 20px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '10px',
+            gap: '12px',
           }}
         >
           <div
@@ -892,11 +893,11 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ fontSize: '12px', color: 'var(--accent-cyan)' }}>{isPhysicsOpen ? '▼' : '▶'}</span>
-              <span style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                 {lang === 'hi' ? 'अनुमान के पीछे का भौतिक विज्ञान' : 'The Physics Behind the Estimate'}
               </span>
             </div>
-            <span style={{ fontSize: '10px', color: 'var(--accent-cyan)', fontWeight: 600 }}>
+            <span style={{ fontSize: '11px', color: 'var(--accent-cyan)', fontWeight: 600 }}>
               {isPhysicsOpen ? (lang === 'hi' ? 'संक्षिप्त करें' : 'Collapse') : (lang === 'hi' ? 'विस्तार करें' : 'Expand')}
             </span>
           </div>
@@ -907,21 +908,21 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
               background: '#080B0F',
               border: '1px solid #1C242D',
               borderRadius: '4px',
-              padding: '8px 12px',
+              padding: '10px 14px',
               fontFamily: 'monospace',
-              fontSize: '13px',
+              fontSize: '14px',
               color: 'var(--accent-cyan)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              letterSpacing: '0.5px',
+              letterSpacing: '0.6px',
             }}
           >
             ∂C/∂t + u · ∇C = ∇ · (K ∇C) + S
           </div>
 
           {isPhysicsOpen ? (
-            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.45, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.5, display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <div>
                 <strong style={{ color: 'var(--text-primary)' }}>C:</strong> PM2.5 spatial concentration field (&mu;g/m&sup3;).
               </div>
@@ -934,12 +935,12 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
               <div>
                 <strong style={{ color: 'var(--text-primary)' }}>S:</strong> Source terms: satellite active fires + Delhi industrial hotspot emission clusters.
               </div>
-              <div style={{ fontSize: '10px', color: 'var(--text-muted)', borderTop: '1px solid #1C242D', paddingTop: '6px' }}>
+              <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', borderTop: '1px solid #1C242D', paddingTop: '6px' }}>
                 * The engine implements a semi-analytical physics-informed solution (co-axial Gaussian core/halo plumes + 2nd-order backward trajectories + rolling bias correction) rather than slow supercomputer PDE grids, enabling sub-second real-time evaluation.
               </div>
             </div>
           ) : (
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+            <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: 1.45 }}>
               {lang === 'hi'
                 ? 'यह मॉडल वायुमंडलीय अभिवहन (advection) और गॉसियन विसर्जन (Gaussian dispersion) का वास्तविक-समय भौतिक समाधान उपयोग करता है।'
                 : 'Real-time semi-analytical advection-dispersion modeling combining regional background, biomass advection, and local urban plumes.'}
@@ -956,37 +957,37 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
           background: '#0D1117',
           border: '1px solid #252D37',
           borderRadius: 'var(--radius-sm)',
-          padding: '10px 14px',
+          padding: '12px 18px',
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-          gap: '10px',
+          gap: '14px',
         }}
       >
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#27D3E2', marginTop: '4px', flexShrink: 0 }} />
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+          <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#27D3E2', marginTop: '4px', flexShrink: 0 }} />
           <div>
-            <div style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--text-primary)' }}>MEASURED</div>
-            <div style={{ fontSize: '10px', color: 'var(--text-secondary)', lineHeight: 1.35 }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-primary)' }}>MEASURED</div>
+            <div style={{ fontSize: '10.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
               Direct physical observation from BAM/TEOM sensor at verified CPCB/DPCC monitoring stations.
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-          <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#D2A34D', marginTop: '4px', flexShrink: 0 }} />
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+          <div style={{ width: '9px', height: '9px', borderRadius: '2px', background: '#D2A34D', marginTop: '4px', flexShrink: 0 }} />
           <div>
-            <div style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--text-primary)' }}>ESTIMATED</div>
-            <div style={{ fontSize: '10px', color: 'var(--text-secondary)', lineHeight: 1.35 }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-primary)' }}>ESTIMATED</div>
+            <div style={{ fontSize: '10.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
               Model-derived concentration synthesized via atmospheric physics across unmonitored neighborhoods.
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-          <div style={{ width: '8px', height: '8px', borderRadius: '2px', border: '1px dashed #707C8A', marginTop: '4px', flexShrink: 0 }} />
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+          <div style={{ width: '9px', height: '9px', borderRadius: '2px', border: '1px dashed #707C8A', marginTop: '4px', flexShrink: 0 }} />
           <div>
-            <div style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--text-muted)' }}>UNCERTAIN / UNAVAILABLE</div>
-            <div style={{ fontSize: '10px', color: 'var(--text-secondary)', lineHeight: 1.35 }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>UNCERTAIN / UNAVAILABLE</div>
+            <div style={{ fontSize: '10.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
               Error spread expands with monitor distance (&plusmn;&sigma;); out-of-domain coordinates display &ndash;&ndash; &mu;g/m&sup3; and are never fabricated.
             </div>
           </div>

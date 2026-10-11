@@ -1,6 +1,6 @@
 # PranVayu Status
 
-Updated: 2026-10-11T20:38:00+05:30
+Updated: 2026-10-11T22:52:00+05:30
 Phase: PranVayu Geospatial Air Intelligence Platform v2 Overhaul
 
 ## Done
@@ -83,6 +83,7 @@ Phase: PranVayu Geospatial Air Intelligence Platform v2 Overhaul
   - **Spatial Estimation Novelty Visual**: Compact side-by-side comparison of Raw Measured (sparse 12 stations) vs Physics-Estimated (continuous basin with highlighted unmonitored location at Najafgarh showing 52 µg/m³ ±37.6 µg/m³).
   - **Collapsible Physics Panel**: Displays conceptual governing equation $\partial C/\partial t + \mathbf{u} \cdot \nabla C = \nabla \cdot (\mathbf{K} \nabla C) + S$ and plain language explanation of the implemented semi-analytical Gaussian plume + backward trajectory solver.
   - **Trust and Uncertainty Strip**: Standardizes `MEASURED`, `ESTIMATED`, and `UNCERTAIN / UNAVAILABLE` distinctions.
+  - **Full-Viewport Responsive Layout**: Expanded container to `width: 100vw`, `height: calc(100vh - 64px)` with proportional SVG scaling (120px pipeline graphics, 100px comparison displays) and flex distribution, ensuring the explainer completely fills widescreen displays without dead margins.
 
 - **Full Verification & Quality Assurance**:
   - Pure obsidian/charcoal cartography with zero brown/orange mud.

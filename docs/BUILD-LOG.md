@@ -239,7 +239,9 @@
   - Explains the actual implemented semi-analytical physics-informed solution (co-axial Gaussian core/halo plumes + 2nd-order backward trajectories + rolling bias-corrected CAMS chemical boundary). Collapsed by default.
 - **Trust and Uncertainty Strip**:
   - Clarifies three distinct data modalities: `MEASURED` (BAM/TEOM ground sensors), `ESTIMATED` (physics-informed spatial model), `UNCERTAIN / UNAVAILABLE` (distance-scaled uncertainty spread; out-of-domain is `-- µg/m³` and never painted green).
-- **Verification**:
+- **Verification & Viewport Calibration**:
+  - Container adapted to `width: 100vw`, `height: calc(100vh - 64px)` with responsive SVG scaling (120px pipeline, 100px novelty) and flex distribution, eliminating empty bands on high-resolution screens.
   - `make test`: 23/23 tests passing offline.
   - `make lint`: clean (0 lint/type errors, CSS bundle 30.44 kB / 9.87 kB gzipped).
-  - Headless Chrome visual verification confirmed across English and Hindi views.
+  - Headless Chrome visual verification confirmed across English and Hindi views (1440x900 viewport capture verified).
+
