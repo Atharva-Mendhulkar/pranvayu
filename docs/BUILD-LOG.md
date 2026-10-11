@@ -53,3 +53,9 @@
   - **Page 2 (How We Estimate)**: Provides a complete, transparent breakdown of the 4-step computational pipeline, 3 core mathematical models (CAMS rolling bias correction, 24-member backward trajectory integration, Smoke Influence Index), pre-registered M1–M5 historical replay evaluation matrix, documented limitations, and data source attributions.
 - Full verification: `make test` passed 10/10 tests, `make lint` passed with 0 errors, browser subagent visually verified both pages with 0 emojis and sleek glassmorphic aesthetics.
 
+### 2026-10-11 15:50 IST — OpenFreeMap Vector Basemap Integration & Makefile Fix
+- Integrated OpenFreeMap vector basemap via MapLibre GL JS under Three.js fluid layer with 5 map styles (Dark, Positron, Liberty, Bright, Fiord).
+- Top view renders vector basemap crisp and flat with advecting storm clouds and wind streaks; horizontal view extrudes 3D peaks along the Y-axis.
+- Fixed `make evaluate` to set `PYTHONPATH=backend` so replay evaluation runs directly from repository root.
+- Verified `make test`, `make lint`, `make run-local`, `make evaluate`.
+

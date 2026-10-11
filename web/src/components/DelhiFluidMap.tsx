@@ -1,7 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import * as maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { Language } from '../lib/i18n';
 import { WindIcon, CompassIcon, LayersIcon, MapIcon } from './Icons';
+
+export type OpenFreeMapStyle = 'dark' | 'positron' | 'liberty' | 'bright' | 'fiord';
+
+export const OPENFREEMAP_STYLES: Record<OpenFreeMapStyle, { name: string; url: string }> = {
+  dark: { name: 'Dark', url: 'https://tiles.openfreemap.org/styles/dark' },
+  positron: { name: 'Positron', url: 'https://tiles.openfreemap.org/styles/positron' },
+  liberty: { name: 'Liberty', url: 'https://tiles.openfreemap.org/styles/liberty' },
+  bright: { name: 'Bright', url: 'https://tiles.openfreemap.org/styles/bright' },
+  fiord: { name: 'Fiord', url: 'https://tiles.openfreemap.org/styles/fiord' },
+};
 
 export interface HotspotData {
   id: string;
@@ -59,10 +71,47 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
   onToggleViewMode,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<maplibregl.Map | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const [currentStyle, setCurrentStyle] = useState<OpenFreeMapStyle>('dark');
   const [activePin, setActivePin] = useState<HotspotData | null>(null);
   const [pinScreenCoords, setPinScreenCoords] = useState<Array<{ id: string; sx: number; sy: number; data: HotspotData }>>([]);
   const [mapTilesLoaded, setMapTilesLoaded] = useState<boolean>(false);
+
+  // Initialize and synchronize OpenFreeMap via MapLibre GL JS
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+
+    const map = new maplibregl.Map({
+      container: mapContainerRef.current,
+      style: OPENFREEMAP_STYLES[currentStyle].url,
+      center: [77.168, 28.613],
+      zoom: 10.15,
+      interactive: false,
+      attributionControl: false,
+    });
+
+    map.fitBounds(
+      [
+        [76.8164, 28.3044],
+        [77.5195, 28.9216],
+      ],
+      { padding: 20, animate: false }
+    );
+
+    map.on('load', () => {
+      setMapTilesLoaded(true);
+    });
+
+    mapInstanceRef.current = map;
+
+    return () => {
+      map.remove();
+      mapInstanceRef.current = null;
+    };
+  }, [currentStyle]);
 
   // Three.js instances ref
   const threeRef = useRef<{
@@ -78,7 +127,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     reqId: number;
   } | null>(null);
 
-  // Load real Map API basemap tiles (Carto Dark Matter / OpenStreetMap) onto a 1024x1024 texture
+  // Load basemap texture for 3D terrain peaks mesh (Carto Dark Matter / OSM)
   const createDelhiBasemapTexture = () => {
     const canvas = document.createElement('canvas');
     canvas.width = 1024;
@@ -417,14 +466,20 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         }
 
         // 5. Final composite:
-        // Dark Map API layer underneath + translucent pollution weather clouds + wind streamlines
-        float finalCloudAlpha = clamp(cloudAlpha * 0.72, 0.0, 0.85);
-        vec3 composited = mix(baseMapColor.rgb, cloudColor, finalCloudAlpha);
-
-        // Overlay flowing wind streaks
-        composited = mix(composited, windStreamColor, windStreak * 0.32);
-
-        gl_FragColor = vec4(composited, 1.0);
+        // When in Top View (u_view_mode <= 0.05):
+        // Canvas is transparent so the vector OpenFreeMap underneath shows through crisply!
+        // The translucent fluid storm clouds and wind streaks are composited cleanly.
+        if (u_view_mode <= 0.05) {
+          vec3 topColor = mix(cloudColor, windStreamColor, windStreak * 0.45);
+          float topAlpha = clamp(finalCloudAlpha * 0.82 + windStreak * 0.40, 0.0, 0.90);
+          gl_FragColor = vec4(topColor, topAlpha);
+        } else {
+          // In 3D Horizontal View (u_view_mode > 0.05):
+          // The 3D peaks rise on the Y axis, textured with the terrain basemap + lighting + contour lines
+          vec3 composited = mix(baseMapColor.rgb, cloudColor, finalCloudAlpha);
+          composited = mix(composited, windStreamColor, windStreak * 0.32);
+          gl_FragColor = vec4(composited, 1.0);
+        }
       }
     `;
 
@@ -618,7 +673,32 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         boxShadow: 'var(--shadow-glass)',
       }}
     >
-      <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
+      {/* Layer 1: OpenFreeMap Vector Basemap (MapLibre GL JS) */}
+      <div
+        ref={mapContainerRef}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 1,
+          opacity: viewMode === 'top' ? 1.0 : 0.12,
+          transition: 'opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+          pointerEvents: viewMode === 'top' ? 'auto' : 'none',
+        }}
+      />
+
+      {/* Layer 2: Three.js Atmospheric Fluid & 3D Peaks Overlay Canvas */}
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 2,
+          width: '100%',
+          height: '100%',
+          display: 'block',
+          pointerEvents: viewMode === 'horizontal' ? 'auto' : 'none',
+        }}
+      />
 
       {/* Floating Glass Control Bar (Top Left) */}
       <div
@@ -629,13 +709,13 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          background: 'rgba(15, 23, 42, 0.75)',
+          background: 'rgba(15, 23, 42, 0.85)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
           border: '1px solid var(--border-glass)',
           borderRadius: 'var(--radius-md)',
           padding: '4px',
-          zIndex: 15,
+          zIndex: 25,
         }}
       >
         <button
@@ -673,6 +753,33 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           <CompassIcon size={14} />
           <span>{lang === 'hi' ? '3D क्षैतिज चोटियाँ' : '3D Horizontal Peaks'}</span>
         </button>
+
+        <div style={{ width: '1px', height: '16px', background: 'var(--border-glass)', margin: '0 2px' }} />
+
+        {/* OpenFreeMap Styles Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+          {(['dark', 'positron', 'liberty', 'bright', 'fiord'] as OpenFreeMapStyle[]).map((styleKey) => (
+            <button
+              key={styleKey}
+              onClick={() => setCurrentStyle(styleKey)}
+              title={`OpenFreeMap ${OPENFREEMAP_STYLES[styleKey].name} Style`}
+              style={{
+                padding: '4px 8px',
+                fontSize: '11px',
+                fontWeight: currentStyle === styleKey ? 700 : 500,
+                borderRadius: 'var(--radius-sm)',
+                background: currentStyle === styleKey ? 'rgba(56, 189, 248, 0.22)' : 'transparent',
+                border: currentStyle === styleKey ? '1px solid var(--accent-cyan)' : '1px solid transparent',
+                color: currentStyle === styleKey ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                cursor: 'pointer',
+                textTransform: 'capitalize',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {styleKey}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Wind & Atmospheric HUD (Top Right) */}
@@ -865,7 +972,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         </div>
       )}
 
-      {/* Map API Attribution & Tile Status Badge (Bottom Right) */}
+      {/* OpenFreeMap Official Attribution Badge (Bottom Right) */}
       <div
         style={{
           position: 'absolute',
@@ -874,7 +981,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           display: 'flex',
           alignItems: 'center',
           gap: '6px',
-          background: 'rgba(15, 23, 42, 0.75)',
+          background: 'rgba(15, 23, 42, 0.85)',
           backdropFilter: 'blur(12px)',
           WebkitBackdropFilter: 'blur(12px)',
           border: '1px solid var(--border-glass)',
@@ -882,12 +989,38 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           padding: '4px 10px',
           fontSize: '11px',
           color: 'var(--text-muted)',
-          zIndex: 15,
-          pointerEvents: 'none',
+          zIndex: 25,
         }}
       >
         <MapIcon size={12} color="var(--accent-cyan)" />
-        <span>Map API: ArcGIS Dark Canvas · OpenStreetMap</span>
+        <span>
+          <a
+            href="https://openfreemap.org/"
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}
+          >
+            OpenFreeMap
+          </a>
+          {' © '}
+          <a
+            href="https://www.openmaptiles.org/"
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}
+          >
+            OpenMapTiles
+          </a>
+          {' Data from '}
+          <a
+            href="https://www.openstreetmap.org/copyright"
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}
+          >
+            OpenStreetMap
+          </a>
+        </span>
       </div>
     </div>
   );

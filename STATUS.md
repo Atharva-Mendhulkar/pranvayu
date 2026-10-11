@@ -27,12 +27,12 @@ Phase: Map API Integration & Top View Flat Cloud Visualization Complete
   - **Zero Emojis**: Complete elimination of all emojis across all components, replaced by custom SVG vector icons (`Icons.tsx`) and clean typographic badges.
   - **Glassmorphic Design System**: Dark cosmic palette (`--bg-root: #090D16`), frosted glass surfaces (`backdrop-filter: blur(16px)`), luminous CPCB category rings, and translucent borders (`rgba(255, 255, 255, 0.08)`).
   - **Real Map API Basemap Integration**:
-    - Underneath the visualization, a real geographic Map API is seamlessly tiled (ArcGIS Dark Canvas Base & Reference tiles covering Delhi NCR at Zoom 11) with zero watermarks.
+    - Underneath the visualization, OpenFreeMap vector tiles (via MapLibre GL JS) are integrated with 5 selectable styles (`Dark`, `Positron`, `Liberty`, `Bright`, `Fiord`) with zero watermarks.
     - True cartographic geography rendered below: New Delhi, Connaught Place, Ring Road, Outer Ring Road, NH48, Yamuna river, Hindon river, Noida, Gurugram, Faridabad, Bawana, Ghaziabad, and administrative state boundaries.
   - **Top View (Map & Clouds - Zero Peaks)**:
     - Completely flat plane (`u_view_mode = 0.0`, `pos.y = 0.0`). Absolutely NO PEAKS in top view.
-    - True nadir camera view `(0, 7.8, 0.001)` looking directly down `(0, 0, 0)`.
-    - Real Map API basemap visible underneath with advecting weather/storm pollution clouds and dynamic cyan wind streamlines flowing across the city.
+    - True nadir camera view looking directly down over vector map.
+    - Real vector basemap visible underneath with advecting weather/storm pollution clouds and dynamic cyan wind streamlines flowing across the city.
     - Station pins sit cleanly on the flat terrain surface over their true geographic coordinates.
   - **Horizontal View (3D Peaks on Y-Axis)**:
     - 3D perspective camera `(0, 3.2, 5.4)` looking at `(0, 0.4, 0)`.
@@ -40,16 +40,17 @@ Phase: Map API Integration & Top View Flat Cloud Visualization Complete
     - Luminous topographic contour rings wrap around each peak summit with 3D directional hillshading.
   - **Controls & HUD**:
     - Mode toggle buttons: `Top View (Map & Clouds)` and `3D Horizontal Peaks`.
-    - Map attribution badge: `Map API: ArcGIS Dark Canvas · OpenStreetMap`.
+    - Style selector: Quick switch between 5 OpenFreeMap vector styles.
+    - Map attribution badge: Clean links to OpenFreeMap, OpenMapTiles, and OpenStreetMap.
     - Atmospheric HUD showing wind speed, direction (`14 km/h (315°) NW`), and active plume advection.
   - **Integrated Pages**:
     - Page 1: Advisory Dashboard with Map, School Day Timetable, Cleanest Window, 48-Hour Forecast, Regional Stubble Smoke tracking.
     - Page 2: How We Estimate with 4-step pipeline, mathematical models (CAMS rolling bias, 24-member ensemble, SII), M1–M5 replay scorecard, and data sources.
-  - **Budget Compliance**: Bundle size strictly maintained under budget (JS: 197.2 kB gzipped vs 200 kB budget; CSS: 2.01 kB gzipped vs 30 kB budget).
 - **Tooling & Verification**:
   - `make test` (10/10 pytest unit tests passing).
   - `make lint` (ruff and TypeScript build passing with 0 errors).
-  - Visual verification with screenshots confirming flat Top View with real map and advecting clouds, and 3D peaks in Horizontal View.
+  - `make run-local` (all 12 mock payloads verified and written).
+  - `make evaluate` (evaluation metrics M1–M5 verified with PYTHONPATH configured).
 
 ## Next
 - Git commit changes.

@@ -11,7 +11,7 @@ run-local:
 	python3 scripts/run_local
 
 evaluate:
-	python3 -c "from pv.replay.evaluate import run_evaluation; run_evaluation(output_dir='web/public/mock')"
+	PYTHONPATH=backend python3 -c "from pv.replay.evaluate import run_evaluation; run_evaluation(output_dir='web/public/mock')"
 
 web-build:
 	cd web && npm run build
