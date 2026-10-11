@@ -1,25 +1,27 @@
 :root {
-  /* Central Design System Tokens (Black, Grey, White, Cyan) */
+  /* Central Design System Tokens (Phase 1.1: Black, Grey, White, Cyan) */
   --background: #080B0F;
-  --map-background: #0A0E12;
-  --surface: #0E1319;
-  --surface-elevated: #121821;
-  --surface-hover: #18212B;
-  --border: #27313D;
-  --border-subtle: #1B2530;
+  --map-background: #090D11;
+  --sidebar-background: #0B0F14;
+  --surface: #0F141B;
+  --surface-elevated: #141A22;
+  --surface-hover: #1A222C;
+  --border: #252D37;
+  --border-subtle: #1C242D;
+  --divider: #1C242D;
   --text-primary: #F3F5F7;
   --text-secondary: #A1ACB8;
-  --text-muted: #6E7B89;
+  --text-muted: #707C8A;
   --accent: #27D3E2;
-  --accent-muted: rgba(39, 211, 226, 0.12);
-  --accent-border: rgba(39, 211, 226, 0.35);
+  --accent-muted: rgba(39, 211, 226, 0.10);
+  --accent-border: rgba(39, 211, 226, 0.30);
 
   /* Aliases for workspace consistency */
   --bg-root: var(--background);
   --bg-surface: var(--surface);
   --bg-surface-elevated: var(--surface-elevated);
   --bg-surface-hover: var(--surface-hover);
-  --bg-panel: rgba(14, 19, 25, 0.94);
+  --bg-panel: rgba(15, 20, 27, 0.94);
   --bg-glass: rgba(255, 255, 255, 0.03);
   --border-muted: var(--border-subtle);
   --border-focus: var(--accent);
@@ -255,11 +257,11 @@ button {
   background: var(--bg-root);
 }
 
-/* Intelligence Sidebar (380px) */
+/* Intelligence Sidebar (340px restrained Perplexity-inspired layout) */
 .intelligence-sidebar {
-  width: 380px;
-  min-width: 380px;
-  max-width: 380px;
+  width: 340px;
+  min-width: 340px;
+  max-width: 340px;
   height: 100%;
   background: var(--bg-surface);
   border-left: 1px solid var(--border-subtle);
@@ -272,7 +274,7 @@ button {
 }
 
 .sidebar-header {
-  padding: 16px 20px;
+  padding: 14px 18px;
   border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-surface);
   position: sticky;
@@ -281,34 +283,67 @@ button {
 }
 
 .sidebar-header-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.2;
 }
 
 .sidebar-header-sub {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
   margin-top: 3px;
 }
 
 .sidebar-content-cards {
-  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  width: 100%;
 }
 
-/* Intelligence Card Styling */
-.intel-card {
-  background: var(--bg-surface-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 16px;
+/* Flat Perplexity-inspired Sidebar Section */
+.sidebar-section {
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  background: transparent;
+}
+
+.sidebar-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-section-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-secondary);
+}
+
+.sidebar-section-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-elevated);
+  color: var(--text-muted);
+}
+
+/* Backwards compatibility for intel-card */
+.intel-card {
+  background: transparent;
+  border: none;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .intel-card-header {
@@ -318,7 +353,7 @@ button {
 }
 
 .intel-card-title {
-  font-size: 11.5px;
+  font-size: 10.5px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.6px;
@@ -326,13 +361,113 @@ button {
 }
 
 .intel-card-badge {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  padding: 2px 7px;
+  padding: 1px 6px;
   border-radius: var(--radius-xs);
   border: 1px solid var(--border-subtle);
-  background: var(--bg-surface);
+  background: var(--bg-surface-elevated);
   color: var(--text-muted);
+}
+
+/* Real Monitoring Station Marker (CPCB / DPCC) */
+.station-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 23;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.station-marker-ring {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-secondary);
+  background: var(--bg-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.station-marker-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+}
+
+.station-marker:hover .station-marker-ring {
+  border-color: var(--accent-cyan);
+  transform: scale(1.15);
+}
+
+.station-marker.active .station-marker-ring {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 2px rgba(39, 211, 226, 0.4);
+}
+
+.station-marker-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: rgba(11, 15, 20, 0.90);
+  border: 1px solid var(--border-subtle);
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  white-space: nowrap;
+}
+
+/* Authentic School Marker */
+.school-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.school-marker-box {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  background: rgba(14, 19, 25, 0.95);
+  border: 1.2px solid rgba(39, 211, 226, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-cyan);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.school-marker:hover .school-marker-box {
+  transform: scale(1.15);
+  border-color: #FFFFFF;
+}
+
+.school-marker.active .school-marker-box {
+  border-color: #FFFFFF;
+  box-shadow: 0 0 0 2px rgba(39, 211, 226, 0.4), 0 4px 12px rgba(0, 0, 0, 0.8);
+}
+
+.school-marker-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: rgba(14, 19, 25, 0.92);
+  border: 1px solid var(--border-subtle);
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  white-space: nowrap;
 }
 
 /* Hotspot Table */

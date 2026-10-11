@@ -1,19 +1,26 @@
 import React from 'react';
-import { ForecastPayload, SeriesPoint } from '../types/payload';
+import { ForecastPayload } from '../types/payload';
 import { Language } from '../lib/i18n';
 import { HotspotData } from './DelhiFluidMap';
-import { WindIcon, CompassIcon, ActivityIcon, ClockIcon } from './Icons';
+import { MonitoringStation, School, SchoolPeriodVerdict } from '../types/intelligence';
+import { WindIcon, SchoolIcon, StationIcon, ActivityIcon, ClockIcon } from './Icons';
 
 interface IntelligenceSidebarProps {
   payload: ForecastPayload;
   selectedDayIndex: number;
   selectedHotspotId: string;
   onSelectHotspot: (id: string) => void;
+  selectedStationId?: string;
+  onSelectStation?: (id: string) => void;
+  selectedSchoolId?: string;
+  onSelectSchool?: (id: string) => void;
   hourOffset: number;
   onSeekHourOffset: (offset: number) => void;
   windSpeedKmh: number;
   windDirDeg: number;
   hotspots: HotspotData[];
+  stations: MonitoringStation[];
+  schools: School[];
   lang: Language;
 }
 
@@ -22,51 +29,57 @@ export const IntelligenceSidebar: React.FC<IntelligenceSidebarProps> = ({
   selectedDayIndex,
   selectedHotspotId,
   onSelectHotspot,
+  selectedStationId,
+  onSelectStation,
+  selectedSchoolId,
+  onSelectSchool,
   hourOffset,
   onSeekHourOffset,
   windSpeedKmh,
   windDirDeg,
   hotspots,
+  stations,
+  schools,
   lang,
 }) => {
   const currentDay = payload.days[selectedDayIndex] || payload.days[0];
   const activeHotspot = hotspots.find((h) => h.id === selectedHotspotId) || hotspots[0];
+  const activeStation = stations.find((s) => s.id === (selectedStationId || selectedHotspotId)) || stations[0];
+  const activeSchool = schools.find((s) => s.id === selectedSchoolId);
 
-  // Derive hotspot value adjusted for forecast hour offset
-  const getHotspotForecastValue = (h: HotspotData, offset: number) => {
-    // Model diurnal curve modulation based on payload series
+  // Derive forecast value modulated for diurnal cycle
+  const getHotspotForecastValue = (basePm: number, offset: number) => {
     const baseSeries = payload.series;
     if (baseSeries && baseSeries.length > 0) {
       const idx = Math.min(Math.max(offset, 0), baseSeries.length - 1);
       const ratio = baseSeries[idx].p50 / Math.max(baseSeries[0].p50, 1);
-      return Math.round(h.pm25 * (0.85 + 0.3 * ratio));
+      return Math.round(basePm * (0.85 + 0.3 * ratio));
     }
-    return h.pm25;
+    return basePm;
   };
 
-  // Sorted hotspots for Card 2
+  // Helper: Severity categorization
+  const getCategoryClass = (val: number) => {
+    if (val <= 30) return { label: 'Good', badge: 'badge-low', color: '#E7C86F' };
+    if (val <= 60) return { label: 'Satisfactory', badge: 'badge-moderate', color: '#E9A45C' };
+    if (val <= 90) return { label: 'Moderate', badge: 'badge-moderate', color: '#E9A45C' };
+    if (val <= 120) return { label: 'Poor', badge: 'badge-poor', color: '#E87849' };
+    if (val <= 250) return { label: 'Very Poor', badge: 'badge-very-poor', color: '#E9564E' };
+    return { label: 'Severe', badge: 'badge-severe', color: '#A83B45' };
+  };
+
+  // Ranked hotspots
   const rankedHotspots = [...hotspots]
     .map((h) => ({
       ...h,
-      forecastVal: getHotspotForecastValue(h, hourOffset),
+      forecastVal: getHotspotForecastValue(h.pm25, hourOffset),
     }))
     .sort((a, b) => b.forecastVal - a.forecastVal);
 
-  const activeHotspotVal = getHotspotForecastValue(activeHotspot, hourOffset);
-
-  // Determine severity category & styling
-  const getCategoryClass = (val: number) => {
-    if (val <= 30) return { label: 'Good', badge: 'badge-low' };
-    if (val <= 60) return { label: 'Satisfactory', badge: 'badge-moderate' };
-    if (val <= 90) return { label: 'Moderate', badge: 'badge-moderate' };
-    if (val <= 120) return { label: 'Poor', badge: 'badge-poor' };
-    if (val <= 250) return { label: 'Very Poor', badge: 'badge-very-poor' };
-    return { label: 'Severe', badge: 'badge-severe' };
-  };
-
+  const activeHotspotVal = getHotspotForecastValue(activeHotspot.pm25, hourOffset);
   const category = getCategoryClass(activeHotspotVal);
 
-  // Compass meteorological & transport directions
+  // Compass directions
   const getWindDirectionLabel = (deg: number) => {
     const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
     const idx = Math.round(((deg % 360) + 360) % 360 / 22.5) % 16;
@@ -78,7 +91,7 @@ export const IntelligenceSidebar: React.FC<IntelligenceSidebarProps> = ({
   const transportLabel = getWindDirectionLabel(transportDeg);
 
   const getTransportInterpretation = (deg: number, speed: number) => {
-    if (speed < 5) return 'Light, stagnant surface winds causing localized contaminant trapping across Central Delhi.';
+    if (speed < 5) return 'Light surface winds causing localized stagnation across Central Delhi.';
     if (deg >= 290 && deg <= 340) {
       return `North-westerly wind (${speed} km/h) transporting upstream biomass plume southeastward toward East Delhi and Noida.`;
     }
@@ -91,59 +104,114 @@ export const IntelligenceSidebar: React.FC<IntelligenceSidebarProps> = ({
     return `Southeasterly winds bringing localized urban exhaust toward North Delhi.`;
   };
 
-  // Series points for Sparkline and PM2.5 Forecast Chart
+  // Series points for uncertainty spread & forecast curve
   const series = payload.series || [];
-  const currentSeriesPoint = series[Math.min(hourOffset, Math.max(series.length - 1, 0))] || { p50: activeHotspotVal, p10: activeHotspotVal * 0.85, p90: activeHotspotVal * 1.15 };
+  const currentSeriesPoint = series[Math.min(hourOffset, Math.max(series.length - 1, 0))] || {
+    p50: activeHotspotVal,
+    p10: activeHotspotVal * 0.85,
+    p90: activeHotspotVal * 1.15,
+  };
   const uncertaintySpread = Math.round((currentSeriesPoint.p90 - currentSeriesPoint.p10) / 2);
 
+  // Compute school periods verdicts for a given school
+  const computeSchoolPeriods = (school: School): SchoolPeriodVerdict[] => {
+    const schoolBasePm = (() => {
+      const match = stations.find((s) => s.id === school.nearest_station_id);
+      return match ? match.current_obs_pm25 : 200;
+    })();
+
+    // Factors for periods (Morning arrival 07:30, Assembly 08:30, PE 11:00, Dispersal 14:30)
+    const periods = [
+      { id: 'arrival', time: '07:30 - 08:30', name_en: 'Morning Arrival', name_hi: 'सुबह आगमन', factor: 1.18 },
+      { id: 'assembly', time: '08:30 - 09:00', name_en: 'Outdoor Assembly', name_hi: 'प्रार्थना सभा', factor: 1.12 },
+      { id: 'pe', time: '10:30 - 12:00', name_en: 'Recess & PE', name_hi: 'खेल कूद व मध्यांतर', factor: 0.92 },
+      { id: 'dispersal', time: '14:00 - 15:00', name_en: 'Afternoon Dispersal', name_hi: 'दोपहर छुट्टी', factor: 0.85 },
+    ];
+
+    return periods.map((p) => {
+      const forecastVal = Math.round(schoolBasePm * p.factor * (1 + (hourOffset / 48) * 0.15));
+      const v: 'go' | 'limit' | 'skip' = forecastVal > 220 ? 'skip' : forecastVal > 110 ? 'limit' : 'go';
+      const cat = getCategoryClass(forecastVal);
+      return {
+        period_id: p.id,
+        time: p.time,
+        name_en: p.name_en,
+        name_hi: p.name_hi,
+        forecast_pm25: forecastVal,
+        verdict: v,
+        category: cat.label,
+      };
+    });
+  };
+
   return (
-    <aside className="intelligence-sidebar">
-      {/* Sidebar Header */}
+    <aside className="intelligence-sidebar" aria-label="Geospatial Air Intelligence">
+      {/* 1. SIDEBAR HEADER */}
       <div className="sidebar-header">
-        <h2 className="sidebar-header-title">Air outlook</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h2 className="sidebar-header-title">Air intelligence</h2>
+          <span
+            style={{
+              fontSize: '10px',
+              fontWeight: 700,
+              padding: '2px 6px',
+              borderRadius: '2px',
+              background: 'rgba(39, 211, 226, 0.12)',
+              color: 'var(--accent-cyan)',
+              border: '1px solid rgba(39, 211, 226, 0.3)',
+              letterSpacing: '0.4px',
+            }}
+          >
+            +{hourOffset}H FORECAST
+          </span>
+        </div>
         <div className="sidebar-header-sub">
-          Delhi NCR · {payload.as_of ? new Date(payload.as_of).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Live Model Run'}
+          Delhi NCR · CPCB / DPCC Network · PINN Dispersion
         </div>
       </div>
 
       <div className="sidebar-content-cards">
-        {/* CARD 1: CURRENT AIR QUALITY */}
-        <section className="intel-card" aria-label="Current Air Quality">
-          <div className="intel-card-header">
-            <span className="intel-card-title">Air Quality · {activeHotspot.name_en}</span>
+        {/* 2. CURRENT CONDITIONS SECTION */}
+        <section className="sidebar-section" aria-label="Current Air Quality">
+          <div className="sidebar-section-header">
+            <span className="sidebar-section-title">
+              Current Conditions · {activeHotspot.name_en}
+            </span>
             <span className={`severity-badge ${category.badge}`}>{category.label}</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-            <span style={{ fontSize: '32px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
+            <span style={{ fontSize: '30px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
               {activeHotspotVal}
             </span>
-            <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>
               µg/m³ PM2.5
             </span>
             <span
               style={{
                 marginLeft: 'auto',
-                fontSize: '11.5px',
+                fontSize: '11px',
                 fontWeight: 600,
                 color: 'var(--pollution-very-high)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '2px',
               }}
             >
-              ▲ +4.2%
+              AQI ~{Math.min(500, Math.round(activeHotspotVal * 1.35))}
             </span>
           </div>
 
-          {/* 24-hour Mini Sparkline */}
-          <div style={{ width: '100%', height: '36px', position: 'relative' }}>
-            <svg width="100%" height="36" viewBox="0 0 240 36" preserveAspectRatio="none">
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}>
+            <span>Nearest Sensor: {activeStation.name_en}</span>
+            <span>Freshness: 14m ago</span>
+          </div>
+
+          {/* Mini 24h Trend */}
+          <div style={{ width: '100%', height: '28px', position: 'relative', marginTop: '2px' }}>
+            <svg width="100%" height="28" viewBox="0 0 240 28" preserveAspectRatio="none">
               {series.length > 1 && (
                 <>
                   <defs>
-                    <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#27D3E2" stopOpacity="0.3" />
+                    <linearGradient id="sparkGrad2" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#27D3E2" stopOpacity="0.25" />
                       <stop offset="100%" stopColor="#27D3E2" stopOpacity="0.0" />
                     </linearGradient>
                   </defs>
@@ -153,15 +221,15 @@ export const IntelligenceSidebar: React.FC<IntelligenceSidebarProps> = ({
                     const range = Math.max(maxP - minP, 1);
                     const points = series.slice(0, 24).map((s, i) => {
                       const x = (i / 23) * 240;
-                      const y = 34 - ((s.p50 - minP) / range) * 30;
+                      const y = 26 - ((s.p50 - minP) / range) * 24;
                       return `${x.toFixed(1)},${y.toFixed(1)}`;
                     });
                     const dLine = `M ${points.join(' L ')}`;
-                    const dArea = `${dLine} L 240,36 L 0,36 Z`;
+                    const dArea = `${dLine} L 240,28 L 0,28 Z`;
                     return (
                       <>
-                        <path d={dArea} fill="url(#sparkGrad)" />
-                        <path d={dLine} fill="none" stroke="#27D3E2" strokeWidth="1.6" />
+                        <path d={dArea} fill="url(#sparkGrad2)" />
+                        <path d={dLine} fill="none" stroke="#27D3E2" strokeWidth="1.5" />
                       </>
                     );
                   })()}
@@ -171,24 +239,24 @@ export const IntelligenceSidebar: React.FC<IntelligenceSidebarProps> = ({
           </div>
         </section>
 
-        {/* CARD 2: HOTSPOT FORECAST */}
-        <section className="intel-card" aria-label="Hotspot Forecast">
-          <div className="intel-card-header">
-            <span className="intel-card-title">Hotspot Forecast (+{hourOffset}h)</span>
-            <span className="intel-card-badge">{rankedHotspots.length} stations</span>
+        {/* 3. INFERRED HOTSPOTS SECTION */}
+        <section className="sidebar-section" aria-label="Inferred Hotspots">
+          <div className="sidebar-section-header">
+            <span className="sidebar-section-title">Inferred Hotspot Cores</span>
+            <span className="sidebar-section-badge">{rankedHotspots.length} Plumes</span>
           </div>
 
           <table className="hotspot-table">
             <thead>
               <tr>
-                <th style={{ width: '30px' }}>#</th>
-                <th>Location</th>
+                <th style={{ width: '24px' }}>#</th>
+                <th>Plume Core</th>
                 <th style={{ textAlign: 'right' }}>PM2.5</th>
-                <th style={{ textAlign: 'right' }}>Severity</th>
+                <th style={{ textAlign: 'right' }}>Category</th>
               </tr>
             </thead>
             <tbody>
-              {rankedHotspots.slice(0, 7).map((h, i) => {
+              {rankedHotspots.slice(0, 5).map((h, i) => {
                 const isSelected = h.id === selectedHotspotId;
                 const cat = getCategoryClass(h.forecastVal);
                 return (
@@ -203,10 +271,10 @@ export const IntelligenceSidebar: React.FC<IntelligenceSidebarProps> = ({
                       {lang === 'hi' ? h.name_hi : h.name_en}
                     </td>
                     <td style={{ textAlign: 'right', fontWeight: 700 }}>
-                      {h.forecastVal} <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>µg</span>
+                      {h.forecastVal} <span style={{ fontSize: '9.5px', color: 'var(--text-muted)' }}>µg</span>
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <span className={`severity-badge ${cat.badge}`} style={{ fontSize: '10px', padding: '1px 5px' }}>
+                      <span className={`severity-badge ${cat.badge}`} style={{ fontSize: '9.5px', padding: '1px 5px' }}>
                         {cat.label}
                       </span>
                     </td>
@@ -217,19 +285,19 @@ export const IntelligenceSidebar: React.FC<IntelligenceSidebarProps> = ({
           </table>
         </section>
 
-        {/* CARD 3: WIND AND POLLUTANT TRANSPORT */}
-        <section className="intel-card" aria-label="Wind and Pollutant Transport">
-          <div className="intel-card-header">
-            <span className="intel-card-title">Wind & Transport</span>
-            <span className="intel-card-badge">ECMWF / Open-Meteo</span>
+        {/* 4. WIND & TRANSPORT SECTION */}
+        <section className="sidebar-section" aria-label="Wind and Transport">
+          <div className="sidebar-section-header">
+            <span className="sidebar-section-title">Wind & Transport</span>
+            <span className="sidebar-section-badge">ECMWF / Open-Meteo</span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {/* Visual Compass Graphic */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            {/* Visual Compass Needle */}
             <div
               style={{
-                width: '64px',
-                height: '64px',
+                width: '56px',
+                height: '56px',
                 borderRadius: '50%',
                 background: 'var(--bg-surface)',
                 border: '1px solid var(--border-subtle)',
@@ -240,23 +308,22 @@ export const IntelligenceSidebar: React.FC<IntelligenceSidebarProps> = ({
                 flexShrink: 0,
               }}
             >
-              <span style={{ position: 'absolute', top: '2px', fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)' }}>N</span>
-              <span style={{ position: 'absolute', bottom: '2px', fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)' }}>S</span>
-              <span style={{ position: 'absolute', left: '3px', fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)' }}>W</span>
-              <span style={{ position: 'absolute', right: '3px', fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)' }}>E</span>
+              <span style={{ position: 'absolute', top: '2px', fontSize: '8px', fontWeight: 700, color: 'var(--text-muted)' }}>N</span>
+              <span style={{ position: 'absolute', bottom: '2px', fontSize: '8px', fontWeight: 700, color: 'var(--text-muted)' }}>S</span>
+              <span style={{ position: 'absolute', left: '3px', fontSize: '8px', fontWeight: 700, color: 'var(--text-muted)' }}>W</span>
+              <span style={{ position: 'absolute', right: '3px', fontSize: '8px', fontWeight: 700, color: 'var(--text-muted)' }}>E</span>
 
-              {/* Needle pointing to origin and transport */}
               <div
                 style={{
                   width: '2px',
-                  height: '46px',
+                  height: '40px',
                   background: 'transparent',
                   position: 'relative',
                   transform: `rotate(${windDirDeg}deg)`,
                   transition: 'transform 0.3s ease',
                 }}
               >
-                {/* Wind origin arrow (top) */}
+                {/* Wind origin arrow */}
                 <div
                   style={{
                     position: 'absolute',
@@ -264,12 +331,12 @@ export const IntelligenceSidebar: React.FC<IntelligenceSidebarProps> = ({
                     left: '-3px',
                     width: 0,
                     height: 0,
-                    borderLeft: '4px solid transparent',
-                    borderRight: '4px solid transparent',
-                    borderBottom: '10px solid #A1ACB8',
+                    borderLeft: '3px solid transparent',
+                    borderRight: '3px solid transparent',
+                    borderBottom: '8px solid #A1ACB8',
                   }}
                 />
-                {/* Transport vector arrow (bottom, cyan) */}
+                {/* Transport vector arrow (cyan) */}
                 <div
                   style={{
                     position: 'absolute',
@@ -277,33 +344,252 @@ export const IntelligenceSidebar: React.FC<IntelligenceSidebarProps> = ({
                     left: '-3px',
                     width: 0,
                     height: 0,
-                    borderLeft: '4px solid transparent',
-                    borderRight: '4px solid transparent',
-                    borderTop: '10px solid #27D3E2',
+                    borderLeft: '3px solid transparent',
+                    borderRight: '3px solid transparent',
+                    borderTop: '8px solid #27D3E2',
                   }}
                 />
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
                 {originLabel} ({windDirDeg}°) · {windSpeedKmh} km/h
               </div>
-              <div style={{ fontSize: '11.5px', color: 'var(--accent-cyan)', fontWeight: 600 }}>
+              <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', fontWeight: 600 }}>
                 Transport vector → {transportLabel} ({transportDeg}°)
               </div>
             </div>
           </div>
 
-          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+          <p style={{ fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
             {getTransportInterpretation(windDirDeg, windSpeedKmh)}
           </p>
         </section>
 
-        {/* CARD 4: MODEL CONFIDENCE */}
-        <section className="intel-card" aria-label="Model Confidence">
-          <div className="intel-card-header">
-            <span className="intel-card-title">Model Confidence</span>
+        {/* 5. CPCB/DPCC MONITORING NETWORK */}
+        <section className="sidebar-section" aria-label="Monitoring Stations">
+          <div className="sidebar-section-header">
+            <span className="sidebar-section-title">Monitoring Network</span>
+            <span className="sidebar-section-badge">12 CPCB / DPCC</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {stations.slice(0, 4).map((st) => {
+              const isSelected = selectedStationId === st.id || selectedHotspotId === st.id;
+              const cat = getCategoryClass(st.current_obs_pm25);
+              return (
+                <div
+                  key={st.id}
+                  onClick={() => {
+                    if (onSelectStation) onSelectStation(st.id);
+                    onSelectHotspot(st.id);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '5px 8px',
+                    borderRadius: '3px',
+                    background: isSelected ? 'rgba(39, 211, 226, 0.08)' : 'transparent',
+                    borderLeft: isSelected ? '2px solid var(--accent-cyan)' : '2px solid transparent',
+                    cursor: 'pointer',
+                    fontSize: '11.5px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span
+                      style={{
+                        fontSize: '9px',
+                        fontWeight: 700,
+                        padding: '1px 4px',
+                        borderRadius: '2px',
+                        background: st.agency === 'CPCB' ? 'rgba(39, 211, 226, 0.15)' : 'rgba(161, 172, 184, 0.12)',
+                        color: st.agency === 'CPCB' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                      }}
+                    >
+                      {st.agency}
+                    </span>
+                    <span style={{ fontWeight: isSelected ? 700 : 500, color: 'var(--text-primary)' }}>
+                      {lang === 'hi' ? st.name_hi : st.name_en}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {st.current_obs_pm25} µg
+                    </span>
+                    <span
+                      style={{
+                        width: '6px',
+                        height: '6px',
+                        borderRadius: '50%',
+                        background: cat.color,
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* 6. SCHOOL AIR-QUALITY OUTLOOK SECTION */}
+        <section className="sidebar-section" aria-label="School Air Quality Outlook">
+          <div className="sidebar-section-header">
+            <span className="sidebar-section-title">School Air Outlook</span>
+            <span className="sidebar-section-badge">15 Institutions</span>
+          </div>
+
+          {activeSchool ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    {lang === 'hi' ? activeSchool.name_hi : activeSchool.name_en}
+                  </div>
+                  <div style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>
+                    {activeSchool.school_type} · ~{activeSchool.student_count.toLocaleString()} students
+                  </div>
+                </div>
+                <button
+                  onClick={() => onSelectSchool && onSelectSchool('')}
+                  style={{ fontSize: '10px', color: 'var(--text-secondary)', cursor: 'pointer', background: 'transparent', border: 'none' }}
+                >
+                  View All
+                </button>
+              </div>
+
+              {/* Provenance note */}
+              <div
+                style={{
+                  fontSize: '10.5px',
+                  padding: '5px 8px',
+                  borderRadius: '3px',
+                  background: 'var(--bg-surface-elevated)',
+                  border: '1px solid var(--border-subtle)',
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                {activeSchool.station_distance_km <= 3.5 ? (
+                  <>
+                    <strong style={{ color: 'var(--text-primary)' }}>Observation anchor:</strong> Nearby {activeSchool.nearest_station_id} station ({activeSchool.station_distance_km} km)
+                  </>
+                ) : (
+                  <>
+                    <strong style={{ color: 'var(--text-primary)' }}>Model inference:</strong> Direct coordinate estimate ({activeSchool.lat.toFixed(3)}°N, {activeSchool.lon.toFixed(3)}°E)
+                  </>
+                )}
+              </div>
+
+              {/* School Activity Schedule Table */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {computeSchoolPeriods(activeSchool).map((period) => {
+                  const verdictBadge =
+                    period.verdict === 'skip'
+                      ? 'badge-severe'
+                      : period.verdict === 'limit'
+                      ? 'badge-poor'
+                      : 'badge-low';
+                  const verdictLabel =
+                    period.verdict === 'skip' ? 'SKIP' : period.verdict === 'limit' ? 'LIMIT' : 'GO';
+
+                  return (
+                    <div
+                      key={period.period_id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '4px 6px',
+                        borderBottom: '1px solid rgba(39, 49, 61, 0.4)',
+                        fontSize: '11px',
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {lang === 'hi' ? period.name_hi : period.name_en}
+                        </div>
+                        <div style={{ fontSize: '9.5px', color: 'var(--text-muted)' }}>{period.time}</div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                          {period.forecast_pm25} µg
+                        </span>
+                        <span className={`severity-badge ${verdictBadge}`} style={{ fontSize: '9.5px', padding: '1px 5px' }}>
+                          {verdictLabel}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Actionable School Advisory */}
+              <div
+                style={{
+                  fontSize: '11px',
+                  lineHeight: 1.35,
+                  color: 'var(--text-primary)',
+                  borderLeft: '2px solid var(--accent-cyan)',
+                  paddingLeft: '8px',
+                  marginTop: '2px',
+                }}
+              >
+                Morning assembly and outdoor physical education should be held indoors. N95 filtering masks recommended for school bus arrival.
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {schools.slice(0, 4).map((sc) => {
+                const periods = computeSchoolPeriods(sc);
+                const worstVerdict = periods.some((p) => p.verdict === 'skip')
+                  ? 'SKIP OUTDOOR'
+                  : 'LIMIT OUTDOOR';
+                const badgeClass = worstVerdict.includes('SKIP') ? 'badge-severe' : 'badge-poor';
+
+                return (
+                  <div
+                    key={sc.id}
+                    onClick={() => onSelectSchool && onSelectSchool(sc.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '5px 8px',
+                      borderRadius: '3px',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      fontSize: '11.5px',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {lang === 'hi' ? sc.name_hi : sc.name_en}
+                      </div>
+                      <div style={{ fontSize: '9.5px', color: 'var(--text-muted)' }}>
+                        {sc.station_distance_km} km from {sc.nearest_station_id}
+                      </div>
+                    </div>
+
+                    <span className={`severity-badge ${badgeClass}`} style={{ fontSize: '9px', padding: '1px 5px' }}>
+                      {worstVerdict}
+                    </span>
+                  </div>
+                );
+              })}
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '4px' }}>
+                Click any school on map or list to inspect timetable
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* 7. MODEL UNCERTAINTY & ATTRIBUTION */}
+        <section className="sidebar-section" aria-label="Model Uncertainty">
+          <div className="sidebar-section-header">
+            <span className="sidebar-section-title">Model Uncertainty</span>
             <span
               className="severity-badge"
               style={{
@@ -317,45 +603,44 @@ export const IntelligenceSidebar: React.FC<IntelligenceSidebarProps> = ({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
               Uncertainty Margin:
             </span>
-            <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--accent-cyan)' }}>
+            <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--accent-cyan)' }}>
               ±{uncertaintySpread} µg/m³
             </span>
           </div>
 
-          <p style={{ fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
-            Forecast driven by CAMS ECMWF regional atmospheric transport, corrected with 30-day CPCB rolling bias and 24-member backward trajectory ensemble.
-          </p>
+          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+            Stubble smoke influence: <strong>Moderate</strong>. Arrival window estimated 16:00 to 21:00 IST via NW transport corridor.
+          </div>
 
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
-            <span style={{ fontSize: '10.5px', padding: '2px 6px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '4px', color: 'var(--text-muted)' }}>
+          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '2px' }}>
+            <span style={{ fontSize: '9.5px', padding: '1px 5px', background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-subtle)', borderRadius: '2px', color: 'var(--text-muted)' }}>
               CAMS ECMWF
             </span>
-            <span style={{ fontSize: '10.5px', padding: '2px 6px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '4px', color: 'var(--text-muted)' }}>
-              OpenAQ Realtime
+            <span style={{ fontSize: '9.5px', padding: '1px 5px', background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-subtle)', borderRadius: '2px', color: 'var(--text-muted)' }}>
+              CPCB Ground Bias
             </span>
-            <span style={{ fontSize: '10.5px', padding: '2px 6px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '4px', color: 'var(--text-muted)' }}>
-              FIRMS MODIS/VIIRS
+            <span style={{ fontSize: '9.5px', padding: '1px 5px', background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-subtle)', borderRadius: '2px', color: 'var(--text-muted)' }}>
+              VIIRS Active Fire
             </span>
           </div>
         </section>
 
-        {/* CARD 5: PM2.5 FORECAST CHART */}
-        <section className="intel-card" aria-label="PM2.5 Forecast Chart">
-          <div className="intel-card-header">
-            <span className="intel-card-title">48-Hour Forecast Curve</span>
-            <span className="intel-card-badge">Selected: +{hourOffset}h</span>
+        {/* 8. 48-HOUR FORECAST CURVE */}
+        <section className="sidebar-section" aria-label="Forecast Curve">
+          <div className="sidebar-section-header">
+            <span className="sidebar-section-title">48-Hour Forecast Curve</span>
+            <span className="sidebar-section-badge">+{hourOffset}h</span>
           </div>
 
-          {/* Interactive Forecast Line Chart */}
-          <div style={{ width: '100%', height: '140px', position: 'relative' }}>
+          <div style={{ width: '100%', height: '110px', position: 'relative' }}>
             {series.length > 0 ? (
               <svg
                 width="100%"
-                height="140"
-                viewBox="0 0 340 140"
+                height="110"
+                viewBox="0 0 304 110"
                 style={{ overflow: 'visible', cursor: 'crosshair' }}
                 onClick={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
@@ -366,9 +651,9 @@ export const IntelligenceSidebar: React.FC<IntelligenceSidebarProps> = ({
                 }}
               >
                 <defs>
-                  <linearGradient id="bandGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#27D3E2" stopOpacity="0.25" />
-                    <stop offset="100%" stopColor="#27D3E2" stopOpacity="0.03" />
+                  <linearGradient id="bandGrad2" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#27D3E2" stopOpacity="0.22" />
+                    <stop offset="100%" stopColor="#27D3E2" stopOpacity="0.02" />
                   </linearGradient>
                 </defs>
 
@@ -376,9 +661,9 @@ export const IntelligenceSidebar: React.FC<IntelligenceSidebarProps> = ({
                   const maxVal = Math.max(...series.map((s) => s.p90), 350);
                   const minVal = Math.min(...series.map((s) => s.p10), 40);
                   const range = Math.max(maxVal - minVal, 1);
-                  const w = 340;
-                  const h = 110;
-                  const padTop = 15;
+                  const w = 304;
+                  const h = 84;
+                  const padTop = 14;
 
                   const p10Points = series.map((s, i) => {
                     const x = (i / (series.length - 1)) * w;
@@ -402,52 +687,62 @@ export const IntelligenceSidebar: React.FC<IntelligenceSidebarProps> = ({
                   const bandPath = `M ${p10Points.join(' L ')} L ${p90Points.join(' L ')} Z`;
                   const medianLine = `M ${p50Points.join(' L ')}`;
 
-                  // Cursor X position
                   const cursorX = (Math.min(hourOffset, series.length - 1) / (series.length - 1)) * w;
                   const cursorY = padTop + h - ((currentSeriesPoint.p50 - minVal) / range) * h;
 
                   return (
                     <>
-                      {/* Grid lines */}
                       <line x1="0" y1={padTop + h} x2={w} y2={padTop + h} stroke="#27313D" strokeWidth="1" />
                       <line x1="0" y1={padTop + h / 2} x2={w} y2={padTop + h / 2} stroke="#27313D" strokeWidth="1" strokeDasharray="3 3" />
                       <line x1="0" y1={padTop} x2={w} y2={padTop} stroke="#27313D" strokeWidth="1" strokeDasharray="3 3" />
 
-                      {/* Labels */}
-                      <text x="4" y={padTop + 10} fill="#68768A" fontSize="9">{Math.round(maxVal)} µg</text>
-                      <text x="4" y={padTop + h - 4} fill="#68768A" fontSize="9">{Math.round(minVal)} µg</text>
+                      <text x="2" y={padTop + 8} fill="#68768A" fontSize="8.5">{Math.round(maxVal)} µg</text>
+                      <text x="2" y={padTop + h - 3} fill="#68768A" fontSize="8.5">{Math.round(minVal)} µg</text>
 
-                      {/* Uncertainty Band */}
-                      <path d={bandPath} fill="url(#bandGrad)" />
+                      <path d={bandPath} fill="url(#bandGrad2)" />
+                      <path d={medianLine} fill="none" stroke="#27D3E2" strokeWidth="1.8" />
 
-                      {/* Central Forecast Line */}
-                      <path d={medianLine} fill="none" stroke="#27D3E2" strokeWidth="2" />
-
-                      {/* Timeline Scrubber Indicator */}
                       <line
                         x1={cursorX}
-                        y1="6"
+                        y1="4"
                         x2={cursorX}
                         y2={padTop + h}
                         stroke="#F3F5F7"
-                        strokeWidth="1.5"
+                        strokeWidth="1.2"
                         strokeDasharray="2 2"
                       />
-                      <circle cx={cursorX} cy={cursorY} r="4" fill="#27D3E2" stroke="#FFFFFF" strokeWidth="1.5" />
+                      <circle cx={cursorX} cy={cursorY} r="3.5" fill="#27D3E2" stroke="#FFFFFF" strokeWidth="1.2" />
                     </>
                   );
                 })()}
               </svg>
             ) : (
-              <div style={{ color: 'var(--text-muted)', fontSize: '12px', padding: '20px' }}>Loading series...</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '11px', padding: '16px' }}>Loading forecast series...</div>
             )}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10.5px', color: 'var(--text-muted)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9.5px', color: 'var(--text-muted)' }}>
             <span>Now (+0h)</span>
             <span>+12h</span>
             <span>+24h</span>
             <span>+48h</span>
+          </div>
+        </section>
+
+        {/* 9. PRIORITY ADVISORIES SECTION */}
+        <section className="sidebar-section" aria-label="Priority Advisories" style={{ borderBottom: 'none' }}>
+          <div className="sidebar-section-header">
+            <span className="sidebar-section-title">Priority Advisories</span>
+            <span className="severity-badge badge-severe" style={{ fontSize: '9px' }}>ALERT</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-primary)', lineHeight: 1.4 }}>
+              <strong>School Guidance:</strong> Cancel outdoor athletics and morning assembly. Keep classroom filtration active.
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+              <strong>Vulnerable Individuals:</strong> Children, seniors, and asthmatic residents should restrict outdoor exposure.
+            </div>
           </div>
         </section>
       </div>

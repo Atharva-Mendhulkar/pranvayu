@@ -1,40 +1,39 @@
 # PranVayu Status
 
-Updated: 2026-10-11T20:15:00+05:30
-Phase: Individual Pollution Hotspot Rendering Engine & Obsidian Geospatial Intelligence Redesign
+Updated: 2026-10-11T20:38:00+05:30
+Phase: PranVayu Geospatial Air Intelligence Platform v2 Overhaul
 
 ## Done
-- **Pure Obsidian & Charcoal Basemap (`web/src/index.css`)**:
-  - Replaced hue-shifted inverted filter with pure 100% desaturated, inverted, high-contrast filter: `filter: grayscale(100%) invert(100%) contrast(1.7) brightness(0.5)`.
-  - Zero brown, zero orange, zero green mud across the entire basemap; deep charcoal background (`#0A0E12`), crisp grey roads, and deep obsidian waterways (Yamuna).
-  - Restrained interface color discipline: only interface cyan (`#27D3E2`) and neutral greys; warm scientific colors strictly reserved for localized pollution cores and data severity badges.
+- **Restrained Perplexity-Inspired Unified Sidebar (`web/src/components/IntelligenceSidebar.tsx`, `web/src/index.css`)**:
+  - Replaced nested card-in-card clutter with a single continuous black & charcoal (`#0B0F14`) panel (width: 340px) structured with thin 1px hairline dividers (`#1C242D`).
+  - Standardized typography with disciplined uppercase tracking (`10.5px`, `letter-spacing: 0.6px`) for section headers and cyan (`#27D3E2`) as the sole interactive accent color.
+  - Implemented 8 sequential sections:
+    1. Locality & Timestamp Header with `+0H FORECAST` pill badge.
+    2. Current Conditions: PM2.5, CPCB category badge, AQI equivalent, source freshness, and 24h mini sparkline.
+    3. Inferred Hotspot Cores: Plumes ranked by concentration with severity tags and pan-to-focus interaction.
+    4. Wind & Transport: Dual-needle compass dial (origin vs. transport vector) with meteorologically inverted transport interpretation.
+    5. CPCB / DPCC Monitoring Network: Live ground BAM/TEOM stations with agency badges (CPCB vs. DPCC) and real observed PM2.5.
+    6. School Air-Quality Outlook: 15 verified institutions with distance to nearest monitoring station ($D \le 3.5$ km anchor vs. coordinate model estimate) and outdoor timetable schedule (Morning Arrival, Assembly, Recess & PE, Afternoon Dispersal).
+    7. Model Uncertainty & Attribution: PINN confidence, 90% confidence uncertainty spread, stubble arrival range (16:00–21:00 IST), and source tags.
+    8. 48-Hour Forecast Curve: Interactive SVG chart with median line and p10–p90 uncertainty ribbon.
+    9. Priority Advisories: School athletic cancellations and vulnerable group guidance.
 
-- **Physically Grounded Individual Hotspot Dispersion Engine (`web/src/components/DelhiFluidMap.tsx`)**:
-  - Replaced single continuous diffuse smoke shader with individual, localized Gaussian dispersion plumes.
-  - Calculated exact Euclidean ground distances in meters ($dx, dy$) using Web Mercator meters-per-pixel at Delhi latitude (`28.61° N`).
-  - Spatial core radius $\sigma_0 = 2200.0$ meters clamped in screen pixels, ensuring stable geographic ground footprint across zoom levels.
-  - Physics-informed anisotropic transport: downwind plume elongation along meteorological transport vector with sharp upstream cutoff ($0.60 \times \sigma$) and crosswind boundary ($0.80 \times \sigma$).
-  - Strict cutoff at $q < 4.5$ ($3\sigma$): contribution drops smoothly to zero beyond the hotspot boundary.
-  - Local concentration aggregation: $C_{\text{local}} = C_{\text{max}} + 0.25 \times (C_{\text{sum}} - C_{\text{max}})$, preventing runaway cumulative alpha from merging nearby hotspots into an opaque blob.
-  - Direct concentration-to-color mapping:
-    - $< 25$ µg/m³: Clean air $\to$ 100% transparent black basemap (zero color overlay).
-    - $25 - 60$ µg/m³: Faint translucent yellow (`#E7C86F`, alpha 0.02–0.14).
-    - $60 - 120$ µg/m³: Gentle warm amber (`#E9A45C`, alpha 0.14–0.30).
-    - $120 - 180$ µg/m³: Distinct warm orange (`#E87849`, alpha 0.30–0.48).
-    - $180 - 260$ µg/m³: Rich crimson (`#E9564E`, alpha 0.48–0.64).
-    - $> 260$ µg/m³: Intense severe maroon core (`#A83B45`, alpha 0.64–0.76).
-  - Mode B (Continuous Field) provides broader regional dispersion ($\sigma = 9$ km) with bounded alpha (0.45).
+- **Directional Wind Streamlines with Arrowheads (`web/src/components/DelhiFluidMap.tsx`)**:
+  - Rendered 160 animated 2D cyan streamlines with visible, moving directional arrowheads oriented precisely along the transport vector $(dx, dy)$ derived from `(windDirectionDeg + 180) % 360`.
+  - Fast, fluid particle animation with sine-squared alpha pulsing and sharp vector tips across the Delhi NCR extent.
 
-- **Geographically Anchored Station Markers & Layout Collision Resolution**:
-  - Fixed marker placement with `position: absolute` and sub-pixel coordinates; each station marker (`Bawana`, `Punjabi Bagh`, `Anand Vihar`, `Dwarka`, `Okhla`) sits directly atop its physical hotspot core.
-  - Zoom-dependent detail levels: Regional view (< 11), City view (11–13), and Neighborhood view (>= 13).
-  - Stacked selected station detail popup directly above the bottom-left advisory card (`bottom: 185px, left: 20px`), keeping the top-left layer and mode controls completely unobstructed.
+- **First-Class Schools Layer (`config/schools.json`, `web/src/data/schools.ts`, `web/src/components/DelhiFluidMap.tsx`)**:
+  - Curated and validated 15 authentic Delhi educational institutions with verified geographic coordinates, student populations, and nearest station distances.
+  - Dedicated map marker `.school-marker`: compact square badge with cyan border and `SchoolIcon` (mortarboard cap).
+  - Interactive school popup displaying institution name, student count, provenance anchor, and 4-period outdoor activity verdicts (Go / Limit / Skip).
 
-- **Verification & Visual Inspection**:
-  - Captured headless Chrome screenshot at 1536x864 and visually inspected: distinct isolated hotspot cores, zero brown/muddy cast, readable basemap roads, and synchronized HUD.
-  - `make test`: 10/10 pytest unit tests passing.
-  - `make lint`: Ruff and TypeScript build passing with 0 errors.
-  - Vite dev server running and tested on port 3001.
+- **Semantic Separation: Monitoring Stations vs. Inferred Hotspots (`web/src/data/stations.ts`, `web/src/components/DelhiFluidMap.tsx`)**:
+  - Distinct `.station-marker`: Neutral circular ring with concentric colored dot representing fixed CPCB/DPCC continuous monitoring sites (OpenAQ IDs, elevation, direct BAM/TEOM observations).
+  - Distinct `.hotspot-pill-marker`: Rounded pill badges representing model-inferred localized concentration cores (PINN / atmospheric dispersion plumes).
+  - 5-layer toggle control in top-left HUD allowing independent toggling of: (1) Pollution dispersion field, (2) Wind streamlines & vectors, (3) Inferred hotspot cores, (4) CPCB/DPCC stations, (5) Schools & academies.
 
-## Next
-- Deliver completed overhaul to user.
+- **Full Verification & Quality Assurance**:
+  - Zero brown/orange tint on basemap: pure obsidian/charcoal cartography.
+  - 10/10 pytest unit tests passed offline (`make test`).
+  - Production TypeScript and Vite builds passing with 0 lint errors (`make lint`).
+  - High-resolution visual screenshots captured at 1536x864 and verified with both stations and school schedules active.

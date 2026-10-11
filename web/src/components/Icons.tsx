@@ -223,3 +223,26 @@ export const LeafletLogo: React.FC<IconProps> = ({ size = 20, className, style }
     />
   </svg>
 );
+
+export const SchoolIcon: React.FC<IconProps> = ({ size = 16, color = 'currentColor', className, style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
+    <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+    <path d="M6 12v5c3 3 9 3 12 0v-5" />
+  </svg>
+);
+
+export const StationIcon: React.FC<IconProps> = ({ size = 16, color = 'currentColor', className, style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
+    <circle cx="12" cy="12" r="3" fill={color} />
+    <circle cx="12" cy="12" r="8" />
+  </svg>
+);
+
+export const AlertTriangleIcon: React.FC<IconProps> = ({ size = 16, color = 'currentColor', className, style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+    <line x1="12" y1="9" x2="12" y2="13" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
+  </svg>
+);
+

@@ -4,6 +4,8 @@ import { Language } from '../lib/i18n';
 import { DelhiFluidMap, HotspotData, MapAdvisoryInfo } from '../components/DelhiFluidMap';
 import { IntelligenceSidebar } from '../components/IntelligenceSidebar';
 import { generateDeterministicHeadline, ClientRulesConfig } from '../lib/rules';
+import { SCHOOLS } from '../data/schools';
+import { MONITORING_STATIONS } from '../data/stations';
 
 interface HomeRouteProps {
   payload: ForecastPayload;
@@ -40,12 +42,14 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
 }) => {
   const currentDay = payload.days[selectedDayIndex] || payload.days[0];
   const [selectedHotspotId, setSelectedHotspotId] = useState<string>(payload.locality.id || 'anand_vihar');
+  const [selectedStationId, setSelectedStationId] = useState<string>(payload.locality.id || 'anand_vihar');
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string>('');
 
   // Synchronized forecast time offset across Map, Sidebar, Chart, Timeline
   const [hourOffset, setHourOffset] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
-  // Meteorological wind vector
+  // Meteorological wind vector (from NW 315° at 14 km/h)
   const [windSpeedKmh] = useState<number>(14);
   const [windDirDeg] = useState<number>(315);
 
@@ -53,6 +57,7 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
   useEffect(() => {
     if (payload.locality.id) {
       setSelectedHotspotId(payload.locality.id);
+      setSelectedStationId(payload.locality.id);
     }
   }, [payload.locality.id]);
 
@@ -67,7 +72,22 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
 
   const handleSelectHotspot = (id: string) => {
     setSelectedHotspotId(id);
+    setSelectedStationId(id);
     onSelectLocality(id);
+  };
+
+  const handleSelectStation = (id: string) => {
+    setSelectedStationId(id);
+    setSelectedHotspotId(id);
+    onSelectLocality(id);
+  };
+
+  const handleSelectSchool = (id: string) => {
+    setSelectedSchoolId(id);
+    const foundSchool = SCHOOLS.find((s) => s.id === id);
+    if (foundSchool && foundSchool.locality_id) {
+      setSelectedStationId(foundSchool.nearest_station_id);
+    }
   };
 
   const handleTogglePlay = () => {
@@ -92,12 +112,18 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
 
   return (
     <main className="app-workspace-layout">
-      {/* Dominant Map Workspace (approx 74% desktop width) */}
+      {/* Dominant Geospatial Intelligence Map Workspace */}
       <div className="map-workspace-pane">
         <DelhiFluidMap
           hotspots={DEFAULT_HOTSPOTS}
+          stations={MONITORING_STATIONS}
+          schools={SCHOOLS}
           selectedHotspotId={selectedHotspotId}
           onSelectHotspot={handleSelectHotspot}
+          selectedStationId={selectedStationId}
+          onSelectStation={handleSelectStation}
+          selectedSchoolId={selectedSchoolId}
+          onSelectSchool={handleSelectSchool}
           onSelectLocality={onSelectLocality}
           hourOffset={hourOffset}
           onSeekHourOffset={setHourOffset}
@@ -110,17 +136,23 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
         />
       </div>
 
-      {/* Right Intelligence Sidebar (380px fixed width, independent scroll) */}
+      {/* Restrained Perplexity-inspired Intelligence Sidebar (340px) */}
       <IntelligenceSidebar
         payload={payload}
         selectedDayIndex={selectedDayIndex}
         selectedHotspotId={selectedHotspotId}
         onSelectHotspot={handleSelectHotspot}
+        selectedStationId={selectedStationId}
+        onSelectStation={handleSelectStation}
+        selectedSchoolId={selectedSchoolId}
+        onSelectSchool={handleSelectSchool}
         hourOffset={hourOffset}
         onSeekHourOffset={setHourOffset}
         windSpeedKmh={windSpeedKmh}
         windDirDeg={windDirDeg}
         hotspots={DEFAULT_HOTSPOTS}
+        stations={MONITORING_STATIONS}
+        schools={SCHOOLS}
         lang={lang}
       />
     </main>
