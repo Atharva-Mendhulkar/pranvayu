@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ForecastPayload } from '../types/payload';
 import { Language } from '../lib/i18n';
-import { DelhiFluidMap, HotspotData } from '../components/DelhiFluidMap';
-import { CollapsibleSideMenu } from '../components/CollapsibleSideMenu';
+import { DelhiFluidMap, HotspotData, MapAdvisoryInfo } from '../components/DelhiFluidMap';
+import { IntelligenceSidebar } from '../components/IntelligenceSidebar';
 import { generateDeterministicHeadline, ClientRulesConfig } from '../lib/rules';
-import { PlayIcon, PauseIcon, WindIcon, ActivityIcon, ClockIcon } from '../components/Icons';
 
 interface HomeRouteProps {
   payload: ForecastPayload;
@@ -13,9 +12,9 @@ interface HomeRouteProps {
   rulesConfig: ClientRulesConfig | null;
   onNavigate: (route: string) => void;
   onSelectLocality: (locId: string) => void;
-  isSideMenuOpen: boolean;
-  onToggleSideMenu: () => void;
-  onOpenInfoModal: () => void;
+  isSideMenuOpen?: boolean;
+  onToggleSideMenu?: () => void;
+  onOpenInfoModal?: () => void;
 }
 
 const DEFAULT_HOTSPOTS: HotspotData[] = [
@@ -37,240 +36,91 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
   payload,
   selectedDayIndex,
   lang,
-  rulesConfig,
-  onNavigate,
   onSelectLocality,
-  isSideMenuOpen,
-  onToggleSideMenu,
-  onOpenInfoModal,
 }) => {
   const currentDay = payload.days[selectedDayIndex] || payload.days[0];
-  const [dayVerdicts, setDayVerdicts] = useState(currentDay.verdicts);
+  const [selectedHotspotId, setSelectedHotspotId] = useState<string>(payload.locality.id || 'anand_vihar');
 
-  // Map state
-  const [mapViewMode, setMapViewMode] = useState<'top' | 'horizontal'>('top');
-  const [hourOffset, setHourOffset] = useState<number>(8); // Morning school period
+  // Synchronized forecast time offset across Map, Sidebar, Chart, Timeline
+  const [hourOffset, setHourOffset] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
+
+  // Meteorological wind vector
   const [windSpeedKmh] = useState<number>(14);
   const [windDirDeg] = useState<number>(315);
 
-  React.useEffect(() => {
-    setDayVerdicts(currentDay.verdicts);
-  }, [currentDay]);
+  // Sync selected hotspot if locality changes from header
+  useEffect(() => {
+    if (payload.locality.id) {
+      setSelectedHotspotId(payload.locality.id);
+    }
+  }, [payload.locality.id]);
 
-  // Autoplay scrubber
-  React.useEffect(() => {
+  // Timeline scrubber autoplay loop
+  useEffect(() => {
     if (!isPlaying) return;
-    const timer = setInterval(() => {
-      setHourOffset((prev) => (prev + 1) % 48);
-    }, 1200);
-    return () => clearInterval(timer);
+    const interval = setInterval(() => {
+      setHourOffset((prev) => (prev + 1) % 49);
+    }, 1000);
+    return () => clearInterval(interval);
   }, [isPlaying]);
 
-  const headlineText = generateDeterministicHeadline(dayVerdicts, currentDay.clean_window, lang);
+  const handleSelectHotspot = (id: string) => {
+    setSelectedHotspotId(id);
+    onSelectLocality(id);
+  };
 
-  const formatHourLabel = (offset: number) => {
-    const isToday = offset < 24;
-    const hour = offset % 24;
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour % 12 === 0 ? 12 : hour % 12;
-    const dayStr = isToday ? (lang === 'hi' ? 'आज' : 'Today') : (lang === 'hi' ? 'कल' : 'Tomorrow');
-    return `${dayStr} ${String(displayHour).padStart(2, '0')}:00 ${ampm} (+${offset}h)`;
+  const handleTogglePlay = () => {
+    setIsPlaying(!isPlaying);
+  };
+
+  // Derive honest advisory information
+  const headline = generateDeterministicHeadline(currentDay.verdicts, currentDay.clean_window, lang);
+  const mapAdvisory: MapAdvisoryInfo = {
+    status: `${currentDay.verdicts.some((v) => v.verdict === 'skip') ? 'Severe' : 'Very Poor'} · ${currentDay.confidence} confidence`,
+    situation: headline,
+    recommendation: currentDay.clean_window
+      ? (lang === 'hi'
+          ? `सबसे स्वच्छ अवधि: ${currentDay.clean_window.from} से ${currentDay.clean_window.to}। बाहरी गतिविधियाँ इस समय तक सीमित रखें।`
+          : `Cleanest window: ${currentDay.clean_window.from} to ${currentDay.clean_window.to}. Limit strenuous outdoor periods.`)
+      : (lang === 'hi'
+          ? 'संवेदनशील वर्ग बाहरी गतिविधियों से बचें। मास्क का उपयोग करें।'
+          : 'Sensitive groups should avoid outdoor physical exertion.'),
+    confidence: `${currentDay.confidence} confidence`,
+    updatedAt: payload.as_of ? new Date(payload.as_of).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '08:00 IST',
   };
 
   return (
-    <main style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }}>
-      {/* 1. Full-Screen Delhi NCR Atmospheric Dynamics Map */}
-      <DelhiFluidMap
-        hotspots={DEFAULT_HOTSPOTS}
-        viewMode={mapViewMode}
-        windDirectionDeg={windDirDeg}
-        windSpeedKmh={windSpeedKmh}
-        hourOffset={hourOffset}
-        lang={lang}
-        onSelectLocality={onSelectLocality}
-        onToggleViewMode={setMapViewMode}
-        isFullScreen={true}
-        onOpenInfoModal={onOpenInfoModal}
-        isSideMenuOpen={isSideMenuOpen}
-      />
-
-      {/* 2. Floating Atmospheric Clean Window & Headline Card (Bottom Left) */}
-      <div
-        style={{
-          position: 'fixed',
-          bottom: '24px',
-          left: '24px',
-          zIndex: 35,
-          width: '360px',
-          maxWidth: 'calc(100vw - 48px)',
-          background: 'rgba(15, 23, 42, 0.90)',
-          backdropFilter: 'blur(24px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-          border: '1px solid rgba(255, 255, 255, 0.12)',
-          borderRadius: '16px',
-          padding: '16px 20px',
-          boxShadow: 'var(--shadow-glass)',
-          color: 'var(--text-primary)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <ActivityIcon size={16} color="var(--accent-indigo)" />
-          <span style={{ fontSize: '11.5px', fontWeight: 700, textTransform: 'uppercase', color: '#818CF8', letterSpacing: '0.5px' }}>
-            {payload.locality.name_en} · {currentDay.date}
-          </span>
-          <span
-            style={{
-              marginLeft: 'auto',
-              fontSize: '11px',
-              fontWeight: 700,
-              padding: '2px 8px',
-              borderRadius: '9999px',
-              background: currentDay.confidence === 'high' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-              color: currentDay.confidence === 'high' ? '#34D399' : '#FBBF24',
-              border: `1px solid ${currentDay.confidence === 'high' ? 'rgba(16, 185, 129, 0.35)' : 'rgba(245, 158, 11, 0.35)'}`,
-            }}
-          >
-            {currentDay.confidence} confidence
-          </span>
-        </div>
-
-        <h1 style={{ fontSize: '14.5px', fontWeight: 700, color: '#FFFFFF', lineHeight: 1.35, marginBottom: '10px' }}>
-          {headlineText}
-        </h1>
-
-        {/* Cleanest Window of the day */}
-        {currentDay.clean_window && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '6px 12px',
-              borderRadius: '8px',
-              background: 'rgba(16, 185, 129, 0.12)',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
-              color: '#34D399',
-              fontSize: '12.5px',
-              fontWeight: 700,
-            }}
-          >
-            <ClockIcon size={14} color="#34D399" />
-            <span>
-              {lang === 'hi' ? 'सबसे स्वच्छ अवधि:' : 'Cleanest Window:'}{' '}
-              {currentDay.clean_window.from} – {currentDay.clean_window.to}
-            </span>
-            <span style={{ marginLeft: 'auto', fontSize: '11px', fontWeight: 600 }}>
-              {currentDay.clean_window.kind === 'best' ? 'Optimal' : 'Least Bad'}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* 3. Floating 48-Hour Forecast Scrubber Bar (Bottom Center) */}
-      <div
-        style={{
-          position: 'fixed',
-          bottom: '24px',
-          left: isSideMenuOpen ? 'clamp(395px, 48%, calc(100vw - 720px))' : '50%',
-          transform: isSideMenuOpen ? 'none' : 'translateX(-50%)',
-          transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-          zIndex: 35,
-          width: '460px',
-          maxWidth: 'calc(100vw - 420px)',
-          background: 'rgba(15, 23, 42, 0.90)',
-          backdropFilter: 'blur(24px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-          border: '1px solid rgba(255, 255, 255, 0.12)',
-          borderRadius: '16px',
-          padding: '12px 18px',
-          boxShadow: 'var(--shadow-glass)',
-          color: 'var(--text-primary)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '8px',
-            flexWrap: 'wrap',
-            gap: '8px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button
-              onClick={() => setIsPlaying(!isPlaying)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '5px 12px',
-                fontSize: '12px',
-                fontWeight: 700,
-                background: isPlaying ? 'rgba(255, 255, 255, 0.1)' : 'var(--accent-indigo)',
-                color: '#FFFFFF',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                border: '1px solid rgba(255, 255, 255, 0.14)',
-              }}
-            >
-              {isPlaying ? <PauseIcon size={12} color="#FFFFFF" /> : <PlayIcon size={12} color="#FFFFFF" />}
-              <span>{isPlaying ? (lang === 'hi' ? 'रोकें' : 'Pause') : (lang === 'hi' ? 'चलाएँ' : 'Play 48h')}</span>
-            </button>
-
-            <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#FFFFFF' }}>
-              {formatHourLabel(hourOffset)}
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
-            <WindIcon size={13} color="var(--accent-cyan)" />
-            <span>14 km/h NW → SE stubble corridor</span>
-          </div>
-        </div>
-
-        <input
-          type="range"
-          min={0}
-          max={47}
-          value={hourOffset}
-          onChange={(e) => setHourOffset(Number(e.target.value))}
-          style={{
-            width: '100%',
-            height: '5px',
-            cursor: 'pointer',
-            accentColor: 'var(--accent-indigo)',
-          }}
-          aria-label="Forecast hour scrubber"
+    <main className="app-workspace-layout">
+      {/* Dominant Map Workspace (approx 74% desktop width) */}
+      <div className="map-workspace-pane">
+        <DelhiFluidMap
+          hotspots={DEFAULT_HOTSPOTS}
+          selectedHotspotId={selectedHotspotId}
+          onSelectHotspot={handleSelectHotspot}
+          hourOffset={hourOffset}
+          onSeekHourOffset={setHourOffset}
+          isPlaying={isPlaying}
+          onTogglePlay={handleTogglePlay}
+          windDirectionDeg={windDirDeg}
+          windSpeedKmh={windSpeedKmh}
+          advisory={mapAdvisory}
+          lang={lang}
         />
-
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            fontSize: '11px',
-            color: 'var(--text-muted)',
-            marginTop: '4px',
-          }}
-        >
-          <span>Now (+0h)</span>
-          <span>Tomorrow (+24h)</span>
-          <span>+48h</span>
-        </div>
       </div>
 
-      {/* 4. Collapsible Side Menu on the Side */}
-      <CollapsibleSideMenu
-        isOpen={isSideMenuOpen}
-        onToggle={onToggleSideMenu}
+      {/* Right Intelligence Sidebar (380px fixed width, independent scroll) */}
+      <IntelligenceSidebar
         payload={payload}
         selectedDayIndex={selectedDayIndex}
-        dayVerdicts={dayVerdicts}
-        onVerdictsChange={setDayVerdicts}
+        selectedHotspotId={selectedHotspotId}
+        onSelectHotspot={handleSelectHotspot}
+        hourOffset={hourOffset}
+        onSeekHourOffset={setHourOffset}
+        windSpeedKmh={windSpeedKmh}
+        windDirDeg={windDirDeg}
+        hotspots={DEFAULT_HOTSPOTS}
         lang={lang}
-        rulesConfig={rulesConfig}
-        onNavigate={onNavigate}
       />
     </main>
   );

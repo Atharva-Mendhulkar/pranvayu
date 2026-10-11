@@ -1,46 +1,45 @@
 :root {
-  /* Modern Glassmorphic Dark Design Tokens */
-  --bg-root: #090D16;
-  --bg-root-gradient: radial-gradient(circle at 50% 0%, rgba(30, 27, 75, 0.4) 0%, rgba(9, 13, 22, 1) 85%);
-  --bg-surface: rgba(15, 23, 42, 0.88);
-  --bg-surface-elevated: rgba(30, 41, 59, 0.92);
-  --bg-glass: rgba(255, 255, 255, 0.04);
-  --bg-glass-hover: rgba(255, 255, 255, 0.08);
-  --bg-glass-active: rgba(255, 255, 255, 0.12);
+  /* Perplexity-inspired Restrained Dark Design Tokens */
+  --bg-root: #080B0F;
+  --bg-surface: #0D1117;
+  --bg-surface-elevated: #121821;
+  --bg-surface-hover: #17202C;
+  --bg-panel: rgba(13, 17, 23, 0.94);
+  --bg-glass: rgba(255, 255, 255, 0.03);
 
-  /* Glass Borders */
-  --border-glass: rgba(255, 255, 255, 0.10);
-  --border-glass-light: rgba(255, 255, 255, 0.18);
-  --border-glass-focus: rgba(99, 102, 241, 0.5);
+  /* Precise Borders */
+  --border-subtle: #27313D;
+  --border-muted: rgba(39, 49, 61, 0.6);
+  --border-focus: #27D3E2;
 
-  /* Typography / Text Colors */
-  --text-primary: #F8FAFC;
-  --text-secondary: #94A3B8;
-  --text-muted: #64748B;
-  --text-highlight: #38BDF8;
+  /* Typography / Text Hierarchy */
+  --text-primary: #F3F5F7;
+  --text-secondary: #A1ACB8;
+  --text-muted: #68768A;
+  --text-accent: #27D3E2;
 
-  /* Accent Brand Colors */
-  --accent-indigo: #6366F1;
-  --accent-cyan: #06B6D4;
-  --accent-purple: #A855F7;
+  /* Restrained Cyan Interface Accent */
+  --accent-cyan: #27D3E2;
+  --accent-cyan-dim: rgba(39, 211, 226, 0.15);
+  --accent-cyan-subtle: rgba(39, 211, 226, 0.08);
 
-  /* CPCB Official Verdict & Air Quality Colors */
-  --cat-good: #10B981;        /* Emerald */
-  --cat-satisfactory: #34D399; /* Mint */
-  --cat-moderate: #FBBF24;    /* Amber */
-  --cat-poor: #F97316;        /* Orange */
-  --cat-very-poor: #EF4444;   /* Crimson */
-  --cat-severe: #B91C1C;      /* Deep Maroon */
+  /* Scientific PM2.5 & Pollution Scale */
+  --pm-low: #F2CF76;       /* 0-30 µg/m³ Good */
+  --pm-moderate: #F4A65A;  /* 31-60 µg/m³ Satisfactory / Moderate */
+  --pm-poor: #F17A46;      /* 61-90 µg/m³ Poor */
+  --pm-very-poor: #EF554D; /* 91-120 µg/m³ Very Poor */
+  --pm-severe: #A83B45;    /* 121+ µg/m³ Severe / Hazardous */
 
   /* Radii & Shadows */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
   --radius-full: 9999px;
-  --shadow-glass: 0 16px 40px -10px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
-  --shadow-glow: 0 0 24px -2px rgba(99, 102, 241, 0.25);
+  --shadow-panel: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px #27313D;
+  --shadow-popup: 0 12px 32px rgba(0, 0, 0, 0.65), 0 0 0 1px #27313D;
 
-  /* System Font Stack */
+  /* Typography */
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -52,23 +51,22 @@
 
 html, body {
   background-color: var(--bg-root);
-  background-image: var(--bg-root-gradient);
-  background-attachment: fixed;
   color: var(--text-primary);
   font-family: var(--font-family);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.5;
   font-weight: 400;
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  min-height: 100vh;
-  overflow-x: hidden;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
 }
 
 /* Accessibility focus ring */
 :focus-visible {
-  outline: 2px solid var(--accent-indigo);
+  outline: 2px solid var(--accent-cyan);
   outline-offset: 2px;
 }
 
@@ -79,13 +77,13 @@ a {
 }
 
 a:hover {
-  color: #7DD3FC;
+  color: #79E8F3;
   text-decoration: underline;
 }
 
 button {
   font-family: inherit;
-  font-size: 14px;
+  font-size: 13px;
   border-radius: var(--radius-sm);
   border: none;
   cursor: pointer;
@@ -94,329 +92,508 @@ button {
   transition: all 0.15s ease;
 }
 
-/* Glassmorphism Surface Base */
-.glass-panel {
+/* Base Panel */
+.panel-dark {
   background: var(--bg-surface);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid var(--border-glass);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-glass);
-  color: var(--text-primary);
-}
-
-.glass-card {
-  background: var(--bg-glass);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border-glass);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   color: var(--text-primary);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.glass-card:hover {
-  background: var(--bg-glass-hover);
-  border-color: var(--border-glass-light);
-}
-
-/* Rounded Corner Glassmorphism Pill Nav Bar */
-.header-glass-pill {
-  position: fixed;
-  top: 14px;
-  left: 20px;
-  right: 20px;
+/* Top Navigation (64px) */
+.app-top-nav {
+  height: 64px;
+  background-color: var(--bg-root);
+  border-bottom: 1px solid var(--border-subtle);
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 8px 18px;
-  border-radius: var(--radius-full);
-  background: rgba(15, 23, 42, 0.88);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid var(--border-glass);
-  box-shadow: var(--shadow-glass);
-  z-index: 50;
+  padding: 0 20px;
+  z-index: 100;
+  position: relative;
+  flex-shrink: 0;
 }
 
-.brand-section {
+.nav-left-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
 }
 
-.brand-logo {
-  font-size: 19px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  color: #FFFFFF;
+.brand-title-wrap {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 8px;
 }
 
-.brand-badge {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-  background: rgba(99, 102, 241, 0.15);
-  color: #818CF8;
-  border: 1px solid rgba(99, 102, 241, 0.3);
-}
-
-.header-controls {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-/* Custom Glass Select */
-.glass-select {
-  background: rgba(30, 41, 59, 0.85);
-  color: var(--text-primary);
-  border: 1px solid var(--border-glass-light);
-  border-radius: var(--radius-full);
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  outline: none;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.glass-select:focus {
-  border-color: var(--accent-indigo);
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
-}
-
-/* Glass Pill Tabs */
-.glass-pills {
-  display: inline-flex;
-  align-items: center;
-  background: rgba(15, 23, 42, 0.7);
-  padding: 3px;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--border-glass);
-}
-
-.glass-pill-btn {
-  padding: 5px 12px;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  border-radius: var(--radius-full);
-  transition: all 0.15s ease;
-}
-
-.glass-pill-btn:hover {
-  color: var(--text-primary);
-}
-
-.glass-pill-btn.active {
-  background: rgba(255, 255, 255, 0.12);
-  color: #FFFFFF;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-  border: 1px solid var(--border-glass-light);
+.brand-main-title {
+  font-size: 16px;
   font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text-primary);
 }
 
-/* Navigation Page Switcher */
+.brand-sub-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
 .nav-page-tabs {
   display: inline-flex;
-  background: rgba(15, 23, 42, 0.7);
-  padding: 3px;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--border-glass);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
 }
 
 .nav-page-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 14px;
+  padding: 5px 12px;
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-secondary);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-xs);
+  transition: all 0.15s ease;
 }
 
 .nav-page-btn:hover {
   color: var(--text-primary);
+  background: var(--bg-surface-hover);
 }
 
 .nav-page-btn.active {
-  background: var(--accent-indigo);
-  color: #FFFFFF;
-  font-weight: 700;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+  background: var(--bg-surface-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  font-weight: 600;
 }
 
-/* Layout Container for Method & Evidence pages */
-.app-container-page {
-  max-width: 1200px;
-  margin: 90px auto 40px;
-  padding: 0 20px;
+.nav-right-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Select Dropdown */
+.select-dark {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-size: 12.5px;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.select-dark:focus {
+  border-color: var(--accent-cyan);
+}
+
+/* Segmented Control Pill Group */
+.segmented-pills {
+  display: inline-flex;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
+}
+
+.segmented-pill-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border-radius: var(--radius-xs);
+  transition: all 0.15s ease;
+}
+
+.segmented-pill-btn:hover {
+  color: var(--text-primary);
+}
+
+.segmented-pill-btn.active {
+  background: var(--bg-surface-elevated);
+  color: var(--text-primary);
+  font-weight: 600;
+  border: 1px solid var(--border-subtle);
+}
+
+/* Two-Column App Workspace (Height: calc(100vh - 64px)) */
+.app-workspace-layout {
+  display: flex;
+  width: 100vw;
+  height: calc(100vh - 64px);
+  overflow: hidden;
   position: relative;
+}
+
+.map-workspace-pane {
+  flex: 1;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-root);
+}
+
+/* Intelligence Sidebar (380px) */
+.intelligence-sidebar {
+  width: 380px;
+  min-width: 380px;
+  max-width: 380px;
+  height: 100%;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-subtle);
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  z-index: 40;
+  flex-shrink: 0;
+}
+
+.sidebar-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  position: sticky;
+  top: 0;
   z-index: 10;
 }
 
-/* Hero Status Bar */
-.status-bar-glass {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 12px 18px;
-  border-radius: var(--radius-md);
-  background: rgba(15, 23, 42, 0.85);
-  border: 1px solid var(--border-glass);
-  box-shadow: var(--shadow-glass);
-  margin-bottom: 20px;
+.sidebar-header-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
 }
 
-.clean-window-badge {
-  display: inline-flex;
+.sidebar-header-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+.sidebar-content-cards {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Intelligence Card Styling */
+.intel-card {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.intel-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.intel-card-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-secondary);
+}
+
+.intel-card-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+}
+
+/* Hotspot Table */
+.hotspot-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.hotspot-table th {
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.hotspot-table td {
+  padding: 8px 8px;
+  border-bottom: 1px solid rgba(39, 49, 61, 0.4);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.hotspot-table tr:hover td {
+  background-color: var(--bg-surface-hover);
+}
+
+.hotspot-table tr.selected td {
+  background-color: rgba(39, 211, 226, 0.08);
+  border-left: 2px solid var(--accent-cyan);
+}
+
+/* Floating Map Controls */
+.map-floating-panel {
+  position: absolute;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-panel);
+  z-index: 30;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Top Left Map Overlay */
+.map-ctrl-top-left {
+  top: 16px;
+  left: 16px;
+  display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 12px;
-  border-radius: var(--radius-full);
-  background: rgba(16, 185, 129, 0.15);
-  color: #34D399;
-  border: 1px solid rgba(16, 185, 129, 0.35);
-  font-size: 13px;
-  font-weight: 700;
+  padding: 6px 10px;
 }
 
-/* Timetable Cards */
-.timetable-glass-container {
+/* Horizon Selector Chips */
+.horizon-chips {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.horizon-chip {
+  padding: 4px 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-radius: var(--radius-xs);
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+.horizon-chip:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface-hover);
+}
+
+.horizon-chip.active {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+/* Top Right Map Overlay */
+.map-ctrl-top-right {
+  top: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.map-icon-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-panel);
+}
+
+.map-icon-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface-hover);
+}
+
+/* Bottom Left Floating Advisory */
+.map-ctrl-bottom-left {
+  bottom: 20px;
+  left: 20px;
+  width: 320px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.timetable-card {
+/* Bottom Center Timeline Scrubber */
+.map-ctrl-bottom-center {
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border-glass);
-  border-radius: var(--radius-md);
-  transition: all 0.2s ease;
+  gap: 14px;
+  padding: 8px 16px;
+  width: 480px;
+  max-width: calc(100% - 680px);
 }
 
-.timetable-card:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: var(--border-glass-light);
-  transform: translateY(-1px);
+/* Bottom Right PM2.5 Legend */
+.map-ctrl-bottom-right {
+  bottom: 20px;
+  right: 20px;
+  padding: 8px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.verdict-badge {
+/* Hotspot Pill Marker on Map */
+.hotspot-pill-marker {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 12px;
+  background: rgba(13, 17, 23, 0.94);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-full);
-  font-size: 12px;
+  padding: 3px 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+  pointer-events: auto;
+}
+
+.hotspot-pill-marker:hover {
+  border-color: var(--accent-cyan);
+  transform: translate(-50%, -50%) scale(1.05);
+  z-index: 50;
+}
+
+.hotspot-pill-marker.active {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 2px rgba(39, 211, 226, 0.3), 0 6px 16px rgba(0, 0, 0, 0.7);
+}
+
+.hotspot-marker-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.hotspot-marker-val {
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: var(--text-primary);
 }
 
-.verdict-go {
-  background: rgba(16, 185, 129, 0.15);
-  color: #34D399;
-  border: 1px solid rgba(16, 185, 129, 0.35);
-}
-
-.verdict-limit {
-  background: rgba(245, 158, 11, 0.15);
-  color: #FBBF24;
-  border: 1px solid rgba(245, 158, 11, 0.35);
-}
-
-.verdict-skip {
-  background: rgba(239, 68, 68, 0.15);
-  color: #F87171;
-  border: 1px solid rgba(239, 68, 68, 0.35);
-}
-
-/* Notice / State Banners */
-.state-banner {
-  position: fixed;
-  top: 74px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 45;
-  display: flex;
+/* Severity Pill Badges */
+.severity-badge {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  background: rgba(245, 158, 11, 0.2);
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  color: #FCD34D;
-  padding: 8px 18px;
-  border-radius: var(--radius-full);
-  font-size: 13px;
-  font-weight: 600;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: var(--radius-xs);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
 }
 
-.replay-banner {
-  position: fixed;
-  top: 74px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 45;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: rgba(99, 102, 241, 0.2);
-  border: 1px solid rgba(99, 102, 241, 0.4);
-  color: #A5B4FC;
-  padding: 8px 18px;
-  border-radius: var(--radius-full);
-  font-size: 13px;
-  font-weight: 600;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+.badge-low {
+  background: rgba(242, 207, 118, 0.15);
+  color: #F2CF76;
+  border: 1px solid rgba(242, 207, 118, 0.4);
 }
 
-/* Chart Canvas & SVG Overlays */
-.chart-container-glass {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-glass);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-  box-shadow: var(--shadow-glass);
+.badge-moderate {
+  background: rgba(244, 166, 90, 0.15);
+  color: #F4A65A;
+  border: 1px solid rgba(244, 166, 90, 0.4);
 }
 
-/* Scrollbars */
+.badge-poor {
+  background: rgba(241, 122, 70, 0.15);
+  color: #F17A46;
+  border: 1px solid rgba(241, 122, 70, 0.4);
+}
+
+.badge-very-poor {
+  background: rgba(239, 85, 77, 0.15);
+  color: #EF554D;
+  border: 1px solid rgba(239, 85, 77, 0.4);
+}
+
+.badge-severe {
+  background: rgba(168, 59, 69, 0.2);
+  color: #E2636F;
+  border: 1px solid rgba(168, 59, 69, 0.5);
+}
+
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.4);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: var(--radius-full);
+  background: #27313D;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: #3B4B5C;
 }
 
-/* Leaflet Dark Map Container */
+/* Leaflet Container */
 .leaflet-container {
   background: var(--bg-root) !important;
   font-family: inherit;
+}
+
+/* Map Popups */
+.dark-leaflet-popup .leaflet-popup-content-wrapper {
+  background: var(--bg-surface-elevated) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-popup) !important;
+  padding: 0 !important;
+}
+
+.dark-leaflet-popup .leaflet-popup-content {
+  margin: 0 !important;
+  line-height: 1.4 !important;
+}
+
+.dark-leaflet-popup .leaflet-popup-tip {
+  background: var(--bg-surface-elevated) !important;
+  border: 1px solid var(--border-subtle) !important;
 }

@@ -100,8 +100,8 @@ export const App: React.FC = () => {
 
   if (isLoading || !payload) {
     return (
-      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#090D16', color: '#94A3B8' }}>
-        <div style={{ fontSize: '16px', fontWeight: 600 }}>Loading atmospheric air advisory intelligence...</div>
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-root)', color: 'var(--text-muted)' }}>
+        <div style={{ fontSize: '15px', fontWeight: 600 }}>Loading atmospheric air intelligence...</div>
       </div>
     );
   }
@@ -109,7 +109,7 @@ export const App: React.FC = () => {
   const dayDates = payload.days.map((d) => d.date);
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh', background: '#090D16' }}>
+    <div style={{ position: 'relative', height: '100vh', width: '100vw', background: 'var(--bg-root)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* State Debug / Notice Banners */}
       {debugState === 'stale' && (
         <div className="state-banner">
@@ -136,7 +136,7 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* Floating Rounded Nav Bar */}
+      {/* 64px Perplexity Top Navigation */}
       <Header
         selectedLocality={selectedLocality}
         onLocalityChange={handleLocalityChange}
@@ -152,7 +152,7 @@ export const App: React.FC = () => {
         onToggleSideMenu={() => setIsSideMenuOpen(!isSideMenuOpen)}
       />
 
-      {/* Page 1: Integrated Dashboard with Full Screen Map & Collapsible Side Menu */}
+      {/* Main Workspace: 74% Real Map + 380px Intelligence Sidebar */}
       {currentPage === 'dashboard' && (
         <HomeRoute
           payload={payload}
@@ -173,11 +173,13 @@ export const App: React.FC = () => {
 
       {/* Page 2: How We Estimate & Evidence */}
       {currentPage === 'method' && (
-        <div className="app-container-page">
-          <MethodRoute
-            lang={lang}
-            onBack={() => setCurrentPage('dashboard')}
-          />
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          <div className="app-container-page" style={{ margin: '30px auto' }}>
+            <MethodRoute
+              lang={lang}
+              onBack={() => setCurrentPage('dashboard')}
+            />
+          </div>
         </div>
       )}
 

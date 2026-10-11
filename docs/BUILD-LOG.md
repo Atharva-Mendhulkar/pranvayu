@@ -87,13 +87,18 @@
   - Clean Window card and 48-Hour Forecast Scrubber aligned cleanly without overlap.
 - Verification: `make test` passed 10/10, `make lint` passed with 0 errors, dev server responding with HTTP 200 OK.
 
-### 2026-10-11 19:00 IST — Leaflet Map Engine Migration & Bundle Optimization
-- Migrated mapping engine from MapLibre GL JS to **Leaflet (v1.9.4)** per user instruction.
-- Replaced heavyweight WebGL map library with lightweight Leaflet, reducing map bundle size from **1,036 kB (281 kB gzipped)** down to **149 kB (43 kB gzipped)**, and total CSS to 22.7 kB (8.3 kB gzipped).
-- Supported 4 tile layers: CartoDB Dark Matter (default dark theme), CartoDB Positron, OpenStreetMap standard, and CartoDB Voyager.
-- Real-time sub-pixel synchronization between Leaflet container projection (`map.latLngToContainerPoint`) and Three.js GLSL dispersion shader on `move`, `zoom`, `viewreset`, and `resize` events.
-- Created `web/src/components/LeafletModal.tsx` and updated method attributions with Volodymyr Agafonkin and OpenStreetMap/CARTO credits.
-- All 10 backend tests passing, TypeScript and lint checks green, and Vite production build under 800ms.
+### 2026-10-11 19:15 IST — Complete Geospatial Air Intelligence Dashboard Redesign
+- Redesigned PranVayu into a production-grade air-quality geospatial intelligence platform with Perplexity-inspired restrained dark aesthetic.
+- Re-architected desktop layout into 64px fixed top nav bar and full-height two-column workspace (74% dominant Leaflet map workspace + 380px independent scrolling Intelligence Sidebar).
+- Built 5 connected intelligence cards in the sidebar:
+  1. Current Air Quality (prominent PM2.5 in µg/m³, severity badge, trend, 24h sparkline)
+  2. Hotspot Forecast (ranked table with 12 Delhi NCR hotspots, selection focusing map & popup)
+  3. Wind & Pollutant Transport (meteorological speed/origin, visual compass diagram, derived transport vector interpretation)
+  4. Model Confidence (confidence tier, uncertainty interval, honest CAMS + OpenAQ provenance)
+  5. PM2.5 Forecast Chart (interactive 48h curve with uncertainty envelope and timeline cursor synced with bottom scrubber)
+- Upgraded atmospheric dispersion engine with scientific PM2.5 color ramp (`#F2CF76` -> `#F4A65A` -> `#F17A46` -> `#EF554D` -> `#A83B45`), 2D wind streamline particles, geographically anchored dark pill markers, and floating map panels (Top-Left layers/wind/horizon chips, Top-Right zoom/reset, Bottom-Left advisory, Bottom-Center timeline scrubber, Bottom-Right legend).
+- Verified with `make test` (10/10 pytest passing), `make lint` (ruff + TypeScript 0 errors), and production build.
+
 
 
 

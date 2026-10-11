@@ -165,7 +165,7 @@ export const MapRoute: React.FC<MapRouteProps> = ({
           windSpeedKmh={windSpeedKmh}
           hourOffset={hourOffset}
           lang={lang}
-          onSelectLocality={(locId) => {
+          onSelectLocality={(locId: string) => {
             onSelectLocality(locId);
             onBack();
           }}

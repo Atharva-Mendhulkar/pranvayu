@@ -1,6 +1,6 @@
 import React from 'react';
 import { Language, t } from '../lib/i18n';
-import { MapIcon, LayersIcon, ActivityIcon, MenuIcon } from './Icons';
+import { ActivityIcon } from './Icons';
 
 interface HeaderProps {
   selectedLocality: string;
@@ -25,127 +25,114 @@ export const Header: React.FC<HeaderProps> = ({
   lang,
   onLangChange,
   localitiesList,
-  dayDates,
   currentPage,
   onPageChange,
-  isSideMenuOpen,
-  onToggleSideMenu,
 }) => {
-  const getDayLabel = (dateStr: string, idx: number) => {
-    if (idx === 0) return t('today', lang);
-    if (idx === 1) return t('tomorrow', lang);
-    const d = new Date(dateStr);
-    return d.toLocaleDateString(lang === 'hi' ? 'hi-IN' : 'en-US', { weekday: 'short', day: 'numeric', month: 'short' });
-  };
-
   return (
-    <header className="header-glass-pill">
+    <header className="app-top-nav">
       {/* Brand Section */}
-      <div className="brand-section">
-        <div className="brand-logo">
-          <ActivityIcon size={22} color="#2563EB" />
-          <span>PranVayu</span>
-          <span style={{ fontSize: '13px', fontWeight: 500, color: '#64748B' }}>
-            (प्राणवायु)
+      <div className="nav-left-brand">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => onPageChange('dashboard')}>
+          <div
+            style={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '6px',
+              background: 'rgba(39, 211, 226, 0.12)',
+              border: '1px solid rgba(39, 211, 226, 0.35)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <ActivityIcon size={16} color="var(--accent-cyan)" />
+          </div>
+          <div className="brand-title-wrap">
+            <span className="brand-main-title">PranVayu</span>
+            <span className="brand-sub-title">Delhi NCR Air Intelligence</span>
+          </div>
+        </div>
+
+        {/* Page Switcher Tabs */}
+        <div className="nav-page-tabs" role="tablist">
+          <button
+            className={`nav-page-btn ${currentPage === 'dashboard' ? 'active' : ''}`}
+            onClick={() => onPageChange('dashboard')}
+            role="tab"
+            aria-selected={currentPage === 'dashboard'}
+          >
+            <span>{lang === 'hi' ? 'पूर्वावलोकन' : 'Overview'}</span>
+          </button>
+
+          <button
+            className={`nav-page-btn ${currentPage === 'method' ? 'active' : ''}`}
+            onClick={() => onPageChange('method')}
+            role="tab"
+            aria-selected={currentPage === 'method'}
+          >
+            <span>{lang === 'hi' ? 'प्रणाली व प्रमाण' : 'How it works'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Right Controls: Region, Day, Lang */}
+      <div className="nav-right-controls">
+        {/* Region Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
+            {lang === 'hi' ? 'क्षेत्र:' : 'Region:'}
           </span>
+          <select
+            className="select-dark"
+            value={selectedLocality}
+            onChange={(e) => onLocalityChange(e.target.value)}
+            aria-label="Select region"
+          >
+            {localitiesList.map((loc) => (
+              <option key={loc.id} value={loc.id}>
+                {lang === 'hi' ? loc.name_hi : loc.name_en}
+              </option>
+            ))}
+          </select>
         </div>
-        <div className="brand-badge">
-          Delhi NCR Air Intelligence
-        </div>
-      </div>
-
-      {/* Main Page Switcher (Dashboard vs How We Estimate) */}
-      <div className="nav-page-tabs">
-        <button
-          className={`nav-page-btn ${currentPage === 'dashboard' ? 'active' : ''}`}
-          onClick={() => onPageChange('dashboard')}
-        >
-          <MapIcon size={14} />
-          <span>{lang === 'hi' ? 'वायु डैशबोर्ड' : 'Advisory Dashboard'}</span>
-        </button>
-
-        <button
-          className={`nav-page-btn ${currentPage === 'method' ? 'active' : ''}`}
-          onClick={() => onPageChange('method')}
-        >
-          <LayersIcon size={14} />
-          <span>{lang === 'hi' ? 'प्रणाली व प्रमाण' : 'How We Estimate'}</span>
-        </button>
-      </div>
-
-      {/* Controls: Locality, Day, Lang, OpenFreeMap, Menu */}
-      <div className="header-controls">
-        {/* Locality Selector */}
-        <select
-          className="glass-select"
-          value={selectedLocality}
-          onChange={(e) => onLocalityChange(e.target.value)}
-          aria-label="Select locality"
-        >
-          {localitiesList.map((loc) => (
-            <option key={loc.id} value={loc.id} style={{ background: '#0F172A', color: '#F8FAFC' }}>
-              {lang === 'hi' ? loc.name_hi : loc.name_en}
-            </option>
-          ))}
-        </select>
 
         {/* Day Switcher */}
         {currentPage === 'dashboard' && (
-          <div className="glass-pills" role="tablist">
-            {dayDates.slice(0, 2).map((dateStr, idx) => (
-              <button
-                key={dateStr}
-                className={`glass-pill-btn ${selectedDayIndex === idx ? 'active' : ''}`}
-                onClick={() => onDayChange(idx)}
-                role="tab"
-                aria-selected={selectedDayIndex === idx}
-              >
-                {getDayLabel(dateStr, idx)}
-              </button>
-            ))}
+          <div className="segmented-pills" role="tablist">
+            <button
+              className={`segmented-pill-btn ${selectedDayIndex === 0 ? 'active' : ''}`}
+              onClick={() => onDayChange(0)}
+              role="tab"
+              aria-selected={selectedDayIndex === 0}
+            >
+              {lang === 'hi' ? 'आज' : 'Today'}
+            </button>
+            <button
+              className={`segmented-pill-btn ${selectedDayIndex === 1 ? 'active' : ''}`}
+              onClick={() => onDayChange(1)}
+              role="tab"
+              aria-selected={selectedDayIndex === 1}
+            >
+              {lang === 'hi' ? 'कल' : 'Tomorrow'}
+            </button>
           </div>
         )}
 
         {/* Language Switcher */}
-        <div className="glass-pills">
+        <div className="segmented-pills">
           <button
-            className={`glass-pill-btn ${lang === 'en' ? 'active' : ''}`}
+            className={`segmented-pill-btn ${lang === 'en' ? 'active' : ''}`}
             onClick={() => onLangChange('en')}
           >
             EN
           </button>
           <button
-            className={`glass-pill-btn ${lang === 'hi' ? 'active' : ''}`}
+            className={`segmented-pill-btn ${lang === 'hi' ? 'active' : ''}`}
             onClick={() => onLangChange('hi')}
           >
             हिन्दी
           </button>
         </div>
-
-        {/* Collapsible Advisory Side Menu Toggle Button */}
-        {currentPage === 'dashboard' && onToggleSideMenu && (
-          <button
-            onClick={onToggleSideMenu}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 14px',
-              borderRadius: '9999px',
-              background: isSideMenuOpen ? 'var(--accent-indigo)' : 'rgba(255, 255, 255, 0.12)',
-              color: '#FFFFFF',
-              fontSize: '12.5px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              border: '1px solid var(--border-glass-light)',
-              boxShadow: '0 2px 10px rgba(0, 0, 0, 0.25)',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <MenuIcon size={14} color="#FFFFFF" />
-            <span>{lang === 'hi' ? 'परामर्श मेनू' : 'School Timetable & Forecast'}</span>
-          </button>
-        )}
       </div>
     </header>
   );
