@@ -1,18 +1,43 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
-import * as maplibregl from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { Language } from '../lib/i18n';
-import { WindIcon, CompassIcon, LayersIcon, OpenFreeMapLogo, InfoIcon } from './Icons';
+import { WindIcon, CompassIcon, LayersIcon, LeafletLogo, InfoIcon } from './Icons';
 
-export type OpenFreeMapStyle = 'dark' | 'positron' | 'liberty' | 'bright' | 'fiord';
+export type LeafletTileStyle = 'dark' | 'positron' | 'osm' | 'voyager';
 
-export const OPENFREEMAP_STYLES: Record<OpenFreeMapStyle, { name: string; url: string }> = {
-  dark: { name: 'Dark', url: 'https://tiles.openfreemap.org/styles/dark' },
-  positron: { name: 'Positron', url: 'https://tiles.openfreemap.org/styles/positron' },
-  liberty: { name: 'Liberty', url: 'https://tiles.openfreemap.org/styles/liberty' },
-  bright: { name: 'Bright', url: 'https://tiles.openfreemap.org/styles/bright' },
-  fiord: { name: 'Fiord', url: 'https://tiles.openfreemap.org/styles/fiord' },
+export const LEAFLET_TILE_STYLES: Record<
+  LeafletTileStyle,
+  { name: string; url: string; subdomains?: string; attribution: string; maxZoom?: number }
+> = {
+  dark: {
+    name: 'Dark Matter',
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    subdomains: 'abcd',
+    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors © CARTO',
+  },
+  positron: {
+    name: 'Positron',
+    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    subdomains: 'abcd',
+    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors © CARTO',
+  },
+  osm: {
+    name: 'OpenStreetMap',
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors',
+  },
+  voyager: {
+    name: 'Voyager',
+    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    subdomains: 'abcd',
+    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors © CARTO',
+  },
 };
 
 export interface HotspotData {
@@ -40,7 +65,7 @@ interface DelhiFluidMapProps {
   isSideMenuOpen?: boolean;
 }
 
-// Exact Web Mercator tile parameters for Delhi NCR at Zoom 11
+// Web Mercator tile parameters for Delhi NCR at Zoom 11 (used for 3D terrain elevation mesh)
 const TILE_ZOOM = 11;
 const X_MIN = 1461;
 const Y_MIN = 852;
@@ -76,12 +101,13 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<maplibregl.Map | null>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const windCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Dark mode default style
-  const [currentStyle, setCurrentStyle] = useState<OpenFreeMapStyle>('dark');
+  // Dark mode default style using CartoDB Dark Matter tiles via Leaflet
+  const [currentStyle, setCurrentStyle] = useState<LeafletTileStyle>('dark');
   const [activePin, setActivePin] = useState<HotspotData | null>(null);
   const [pinScreenCoords, setPinScreenCoords] = useState<Array<{ id: string; sx: number; sy: number; data: HotspotData }>>([]);
 
@@ -99,7 +125,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     reqId: number;
   } | null>(null);
 
-  // Synchronize MapLibre vector map projection coordinates with shader and station pins
+  // Synchronize Leaflet map coordinates with Three.js shader and station pins
   const syncMapCoordinates = useCallback(() => {
     const map = mapInstanceRef.current;
     if (!map || !containerRef.current) return;
@@ -110,7 +136,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
 
     const screenPositions = new Float32Array(16 * 2);
     const coords = hotspots.slice(0, 16).map((item, i) => {
-      const pt = map.project([item.lon, item.lat]);
+      const pt = map.latLngToContainerPoint([item.lat, item.lon]);
       screenPositions[i * 2] = pt.x / w;
       screenPositions[i * 2 + 1] = 1.0 - (pt.y / h); // In WebGL UV space, y=0 is bottom
       return {
@@ -124,7 +150,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     if (threeRef.current) {
       threeRef.current.material.uniforms.u_hotspot_screen_positions.value = screenPositions;
       threeRef.current.material.uniforms.u_map_zoom.value = map.getZoom();
-      threeRef.current.material.uniforms.u_map_bearing.value = map.getBearing();
+      threeRef.current.material.uniforms.u_map_bearing.value = 0.0;
       threeRef.current.material.uniforms.u_resolution.value.set(w, h);
     }
 
@@ -133,38 +159,66 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     }
   }, [hotspots, isFullScreen, viewMode]);
 
-  // Initialize and synchronize OpenFreeMap vector map via MapLibre GL JS
+  // Initialize and synchronize interactive map via Leaflet
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    const map = new maplibregl.Map({
-      container: mapContainerRef.current,
-      style: OPENFREEMAP_STYLES[currentStyle].url,
-      center: [77.168, 28.613],
-      zoom: 10.15,
-      interactive: true,
-      attributionControl: false,
-    });
+    if (!mapInstanceRef.current) {
+      const map = L.map(mapContainerRef.current, {
+        center: [28.6139, 77.2090], // Central Delhi
+        zoom: 11,
+        minZoom: 9,
+        maxZoom: 18,
+        attributionControl: false,
+        zoomControl: false,
+      });
 
-    map.fitBounds(
-      [
-        [76.8164, 28.3044],
-        [77.5195, 28.9216],
-      ],
-      { padding: 20, animate: false }
-    );
+      // Fit Delhi NCR geographic bounding box
+      map.fitBounds([
+        [28.3044, 76.8164],
+        [28.9216, 77.5195],
+      ]);
 
-    mapInstanceRef.current = map;
+      const styleDef = LEAFLET_TILE_STYLES[currentStyle];
+      const layer = L.tileLayer(styleDef.url, {
+        subdomains: styleDef.subdomains || 'abc',
+        maxZoom: styleDef.maxZoom || 19,
+      }).addTo(map);
 
-    map.on('load', syncMapCoordinates);
-    map.on('move', syncMapCoordinates);
-    map.on('zoom', syncMapCoordinates);
-    map.on('rotate', syncMapCoordinates);
-    map.on('resize', syncMapCoordinates);
+      tileLayerRef.current = layer;
+      mapInstanceRef.current = map;
+
+      map.on('move', syncMapCoordinates);
+      map.on('zoom', syncMapCoordinates);
+      map.on('viewreset', syncMapCoordinates);
+      map.on('resize', syncMapCoordinates);
+
+      // Invalidate size shortly after mount to ensure smooth canvas dimensions
+      setTimeout(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize();
+          syncMapCoordinates();
+        }
+      }, 100);
+    } else {
+      // Switch tile layer if style preset changes
+      if (tileLayerRef.current && mapInstanceRef.current) {
+        mapInstanceRef.current.removeLayer(tileLayerRef.current);
+        const styleDef = LEAFLET_TILE_STYLES[currentStyle];
+        const newLayer = L.tileLayer(styleDef.url, {
+          subdomains: styleDef.subdomains || 'abc',
+          maxZoom: styleDef.maxZoom || 19,
+        }).addTo(mapInstanceRef.current);
+        tileLayerRef.current = newLayer;
+      }
+    }
 
     return () => {
-      map.remove();
-      mapInstanceRef.current = null;
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+        tileLayerRef.current = null;
+      }
     };
   }, [currentStyle, syncMapCoordinates]);
 
@@ -245,7 +299,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
 
     // 1. Scene & Camera
     const scene = new THREE.Scene();
-    scene.background = null; // transparent canvas so MapLibre vector map shows through
+    scene.background = null; // transparent canvas so Leaflet vector/raster map shows through
 
     const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
     const initialCamPos = viewMode === 'top' ? new THREE.Vector3(0, 7.8, 0.001) : new THREE.Vector3(0, 3.2, 5.4);
@@ -288,7 +342,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       u_hotspot_screen_positions: { value: new Float32Array(16 * 2) },
       u_hotspot_intensities: { value: hotspotIntensities },
       u_resolution: { value: new THREE.Vector2(width, height) },
-      u_map_zoom: { value: 10.15 },
+      u_map_zoom: { value: 11.0 },
       u_map_bearing: { value: 0.0 },
     };
 
@@ -392,7 +446,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       }
 
       // Physics-grounded CPCB Smog & Particulate Spectrum
-      // Incorporates chemical aerosol tones: dark soot cores, toxic crimson, sulfuric amber, emerald fringes
+      // Captures soot cores, toxic crimson, sulfuric amber, emerald fringes
       vec3 getAtmosphericSmogColor(float pmNorm) {
         vec3 colGood     = vec3(0.06, 0.72, 0.51); // #10B981 (Emerald green fringe)
         vec3 colModerate = vec3(0.96, 0.62, 0.04); // #F59E0B (Sulfuric amber haze)
@@ -418,20 +472,18 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         vec2 windPerp = vec2(-windDir.y, windDir.x);
 
         // ========================================================
-        // CASE A: TOP VIEW (Aligned dynamically to MapLibre GL JS vector map)
+        // CASE A: TOP VIEW (Aligned dynamically to Leaflet map)
         // ========================================================
         if (u_view_mode <= 0.05) {
           vec2 fragUV = gl_FragCoord.xy / u_resolution.xy;
           float aspect = u_resolution.x / u_resolution.y;
 
-          // Account for bearing / rotation of the map
-          float bearingRad = - u_map_bearing * 0.0174532925;
-          mat2 rotBearing = mat2(cos(bearingRad), -sin(bearingRad), sin(bearingRad), cos(bearingRad));
-          vec2 effWindDir = rotBearing * windDir;
-          vec2 effWindPerp = vec2(-effWindDir.y, effWindDir.x);
+          // Wind orientation in screen coordinates
+          vec2 effWindDir = windDir;
+          vec2 effWindPerp = windPerp;
 
           // Zoom scale factor (adjusts dispersion radius with map zoom)
-          float zoomScale = pow(2.0, clamp(u_map_zoom - 10.15, -1.5, 3.5));
+          float zoomScale = pow(2.0, clamp(u_map_zoom - 11.0, -1.5, 3.5));
 
           // 1. GAUSSIAN PLUME ATMOSPHERIC DISPERSION
           float totalPlume = 0.0;
@@ -717,6 +769,9 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       threeRef.current.camera.updateProjectionMatrix();
       threeRef.current.renderer.setSize(w, h);
       threeRef.current.material.uniforms.u_resolution.value.set(w, h);
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
       syncMapCoordinates();
     };
     window.addEventListener('resize', handleResize);
@@ -864,7 +919,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
             }
       }
     >
-      {/* Layer 1: Real MapLibre GL Vector Basemap (True Geography of Delhi NCR) */}
+      {/* Layer 1: Leaflet Interactive Map (True Geography of Delhi NCR) */}
       <div
         ref={mapContainerRef}
         style={{
@@ -962,13 +1017,13 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
 
         <div style={{ width: '1px', height: '16px', background: 'rgba(255, 255, 255, 0.12)', margin: '0 2px' }} />
 
-        {/* Styles Selector */}
+        {/* Leaflet Tile Styles Selector */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-          {(['dark', 'positron', 'liberty', 'bright', 'fiord'] as OpenFreeMapStyle[]).map((styleKey) => (
+          {(['dark', 'positron', 'osm', 'voyager'] as LeafletTileStyle[]).map((styleKey) => (
             <button
               key={styleKey}
               onClick={() => setCurrentStyle(styleKey)}
-              title={`${OPENFREEMAP_STYLES[styleKey].name} Style`}
+              title={`${LEAFLET_TILE_STYLES[styleKey].name} Layer`}
               style={{
                 padding: '4px 8px',
                 fontSize: '11px',
@@ -1216,7 +1271,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         </div>
       )}
 
-      {/* Attribution Badge (Bottom Right, dynamically moves when side menu toggles) */}
+      {/* Leaflet & OpenStreetMap Attribution Badge (Bottom Right) */}
       <div
         style={{
           position: 'absolute',
@@ -1238,19 +1293,10 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           zIndex: 25,
         }}
       >
-        <OpenFreeMapLogo size={14} />
+        <LeafletLogo size={14} />
         <span>
-          <strong style={{ color: '#F8FAFC' }}>OpenFreeMap</strong>
-          {' © '}
-          <a
-            href="https://www.openmaptiles.org/"
-            target="_blank"
-            rel="noreferrer"
-            style={{ color: 'var(--accent-cyan)', textDecoration: 'none' }}
-          >
-            OpenMapTiles
-          </a>
-          {' · '}
+          <strong style={{ color: '#F8FAFC' }}>Leaflet</strong>
+          {' · Maps © '}
           <a
             href="https://www.openstreetmap.org/copyright"
             target="_blank"
@@ -1259,12 +1305,21 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           >
             OpenStreetMap
           </a>
+          {' · '}
+          <a
+            href="https://carto.com/attributions"
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: 'var(--accent-cyan)', textDecoration: 'none' }}
+          >
+            CARTO
+          </a>
         </span>
 
         {onOpenInfoModal && (
           <button
             onClick={onOpenInfoModal}
-            title="What is OpenFreeMap?"
+            title="What is Leaflet?"
             style={{
               display: 'inline-flex',
               alignItems: 'center',

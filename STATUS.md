@@ -1,7 +1,7 @@
 # PranVayu Status
 
-Updated: 2026-10-11T13:25:00Z
-Phase: Dark Mode Overhaul, Synchronized MapLibre Vector Map, & Atmospheric Dispersion Physics
+Updated: 2026-10-11T13:35:00Z
+Phase: Leaflet Interactive Map Engine & Atmospheric Dispersion Physics
 
 ## Done
 - **Clean Slate & Repo Structure**: Complete elimination of legacy VayuMind/JointPINN artifacts to satisfy Environmental Hacks rules. Added Apache-2.0 `LICENSE`, `README.md`, `AGENTS.md`, `CLAUDE.md`, and complete `docs/` suite.
@@ -23,12 +23,18 @@ Phase: Dark Mode Overhaul, Synchronized MapLibre Vector Map, & Atmospheric Dispe
 - **AWS Serverless Handlers & Infrastructure**:
   - Thin Lambda handlers (`api.py`, `model_run.py`, `ingest_fires.py`, `ingest_obs.py`, `ingest_winds.py`, `ingest_cams.py`).
   - Complete AWS SAM template (`infra/template.yaml`) for Mumbai (`ap-south-1`) with S3 bucket, DynamoDB `pv-state`, HTTP API, Schedulers, and IAM least-privilege policies.
+- **Leaflet Interactive Map Engine & Tile Layers**:
+  - Migrated map engine to **Leaflet (v1.9.4)**: lightweight, robust, mobile-friendly map library.
+  - Reduced map bundle from 1,036 kB (281 kB gzipped) down to just **149 kB (43 kB gzipped)**.
+  - Multi-layer support: CartoDB Dark Matter (default), CartoDB Positron, OpenStreetMap standard, and CartoDB Voyager.
+  - Real-time sub-pixel synchronization: Leaflet events (`move`, `zoom`, `viewreset`, `resize`) update container projection coordinates via `map.latLngToContainerPoint([lat, lon])` to drive Three.js shader uniforms and station pin projections in lockstep.
+  - Created `LeafletModal.tsx` documentation modal detailing Leaflet, Volodymyr Agafonkin, and OpenStreetMap/CARTO credits.
 - **Dark Mode & Glassmorphic UI Design System (`web/`)**:
   - Deep dark cosmic background (`--bg-root: #090D16`), frosted glass surfaces (`rgba(15, 23, 42, 0.92)`, `backdrop-filter: blur(24px)`), and crisp high-contrast text (`#F8FAFC`, `#94A3B8`).
-  - Cleaned up top navigation bar: removed OpenFreeMap button, keeping sleek rounded glass pill with brand, page switcher, locality selector, day tabs, language switch, and advisory menu toggle.
-  - Dark mode styled across all components including `CollapsibleSideMenu`, `Timetable` time inputs and expansion drawers, and `OpenFreeMapModal`.
+  - Sleek rounded glass pill nav bar with brand, page switcher, locality selector, day tabs, language switch, and advisory menu toggle.
+  - Dark mode styled across all components including `CollapsibleSideMenu`, `Timetable` time inputs and expansion drawers, and `LeafletModal`.
 - **Synchronized Vector Basemap & Atmospheric Dispersion Physics**:
-  - Real MapLibre GL JS vector map rendered at full opacity (1.0) and interactive in Top View.
+  - Real Leaflet cartographic map rendered at full opacity (1.0) and interactive in Top View.
   - True cartographic geography clearly visible: Connaught Place, Ring Road, NH48, Yamuna river, Noida, Gurugram, Dwarka, Rohini, Anand Vihar.
   - Real-time map synchronization: map movement (`move`, `zoom`, `rotate`, `resize`) updates hotspot screen coordinates and zoom scale in shader uniforms and station pin projections.
   - GLSL fragment shader with atmospheric dispersion physics:

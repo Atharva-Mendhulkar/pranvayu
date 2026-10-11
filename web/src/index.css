@@ -414,3 +414,9 @@ button {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.25);
 }
+
+/* Leaflet Dark Map Container */
+.leaflet-container {
+  background: var(--bg-root) !important;
+  font-family: inherit;
+}

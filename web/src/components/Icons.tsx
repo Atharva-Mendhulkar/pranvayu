@@ -190,3 +190,36 @@ export const OpenFreeMapLogo: React.FC<IconProps> = ({ size = 20, className, sty
     <path d="M16 17.5V21" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" />
   </svg>
 );
+
+export const LeafletLogo: React.FC<IconProps> = ({ size = 20, className, style }) => (
+  <svg width={size} height={size} viewBox="0 0 32 32" fill="none" className={className} style={style}>
+    <path
+      d="M26 6C18 6 8 13 6 26C18 26 26 17 26 6Z"
+      fill="#43A047"
+    />
+    <path
+      d="M6 26C12 20 17 15 26 6"
+      stroke="#2E7D32"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <path
+      d="M13 19C16 17 19 17 22 14.5"
+      stroke="#81C784"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+    <path
+      d="M10 22C12 20.5 14 20.5 16 19"
+      stroke="#81C784"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+    <path
+      d="M6 26L3.5 28.5"
+      stroke="#2E7D32"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+    />
+  </svg>
+);

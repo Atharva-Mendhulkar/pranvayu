@@ -5,7 +5,7 @@ import { ClientRulesConfig } from './lib/rules';
 import { Header } from './components/Header';
 import { HomeRoute } from './routes/HomeRoute';
 import { MethodRoute } from './routes/MethodRoute';
-import { OpenFreeMapModal } from './components/OpenFreeMapModal';
+import { LeafletModal } from './components/LeafletModal';
 import { AlertCircleIcon, InfoIcon, RefreshIcon } from './components/Icons';
 
 const LOCALITIES_LIST = [
@@ -36,7 +36,7 @@ export const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<'dashboard' | 'method'>('dashboard');
 
   const [isSideMenuOpen, setIsSideMenuOpen] = useState<boolean>(true);
-  const [isOpenFreeMapModalOpen, setIsOpenFreeMapModalOpen] = useState<boolean>(false);
+  const [isLeafletModalOpen, setIsLeafletModalOpen] = useState<boolean>(false);
 
   const [payload, setPayload] = useState<ForecastPayload | null>(null);
   const [rulesConfig, setRulesConfig] = useState<ClientRulesConfig | null>(null);
@@ -167,7 +167,7 @@ export const App: React.FC = () => {
           onSelectLocality={handleLocalityChange}
           isSideMenuOpen={isSideMenuOpen}
           onToggleSideMenu={() => setIsSideMenuOpen(!isSideMenuOpen)}
-          onOpenInfoModal={() => setIsOpenFreeMapModalOpen(true)}
+          onOpenInfoModal={() => setIsLeafletModalOpen(true)}
         />
       )}
 
@@ -181,10 +181,10 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* OpenFreeMap Information & Documentation Modal */}
-      <OpenFreeMapModal
-        isOpen={isOpenFreeMapModalOpen}
-        onClose={() => setIsOpenFreeMapModalOpen(false)}
+      {/* Leaflet Information & Documentation Modal */}
+      <LeafletModal
+        isOpen={isLeafletModalOpen}
+        onClose={() => setIsLeafletModalOpen(false)}
       />
     </div>
   );

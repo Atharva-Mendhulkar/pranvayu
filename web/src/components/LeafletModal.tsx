@@ -1,19 +1,19 @@
 import React from 'react';
 import {
-  OpenFreeMapLogo,
+  LeafletLogo,
   GithubIcon,
   XSocialIcon,
-  BlueskyIcon,
   XIcon,
   CheckCircleIcon,
+  LayersIcon,
 } from './Icons';
 
-interface OpenFreeMapModalProps {
+interface LeafletModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onClose }) => {
+export const LeafletModal: React.FC<LeafletModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
@@ -61,13 +61,13 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <OpenFreeMapLogo size={32} />
+            <LeafletLogo size={34} />
             <div>
               <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.2 }}>
-                OpenFreeMap
+                Leaflet
               </h2>
               <p style={{ fontSize: '13px', color: '#94A3B8' }}>
-                Free, open-source vector map tiles powered by OpenStreetMap
+                An open-source JavaScript library for building powerful interactive maps
               </p>
             </div>
           </div>
@@ -88,10 +88,10 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
           </button>
         </div>
 
-        {/* Social / Repo Links Badges */}
+        {/* Links Badges */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
           <a
-            href="https://github.com/hyperknot/openfreemap"
+            href="https://github.com/Leaflet/Leaflet"
             target="_blank"
             rel="noreferrer"
             style={{
@@ -109,11 +109,11 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
             }}
           >
             <GithubIcon size={14} />
-            <span>GitHub: openfreemap</span>
+            <span>GitHub: Leaflet/Leaflet</span>
           </a>
 
           <a
-            href="https://github.com/hyperknot/openfreemap-styles"
+            href="https://leafletjs.com"
             target="_blank"
             rel="noreferrer"
             style={{
@@ -122,42 +122,20 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
               gap: '6px',
               padding: '6px 12px',
               borderRadius: '8px',
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: '#94A3B8',
+              background: 'rgba(67, 160, 71, 0.2)',
+              border: '1px solid rgba(67, 160, 71, 0.4)',
+              color: '#81C784',
               fontSize: '12px',
               fontWeight: 600,
               textDecoration: 'none',
             }}
           >
-            <GithubIcon size={14} />
-            <span>openfreemap-styles</span>
+            <LeafletLogo size={14} />
+            <span>leafletjs.com</span>
           </a>
 
           <a
-            href="https://x.com/hyperknot"
-            target="_blank"
-            rel="noreferrer"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              borderRadius: '8px',
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: '#94A3B8',
-              fontSize: '12px',
-              fontWeight: 600,
-              textDecoration: 'none',
-            }}
-          >
-            <XSocialIcon size={13} />
-            <span>X: @hyperknot</span>
-          </a>
-
-          <a
-            href="https://x.com/OpenFreeMapOrg"
+            href="https://x.com/LeafletJS"
             target="_blank"
             rel="noreferrer"
             style={{
@@ -175,11 +153,11 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
             }}
           >
             <XSocialIcon size={13} />
-            <span>@OpenFreeMapOrg</span>
+            <span>X: @LeafletJS</span>
           </a>
 
           <a
-            href="https://bsky.app/profile/hyperknot.com"
+            href="https://mapstodon.space/@leaflet"
             target="_blank"
             rel="noreferrer"
             style={{
@@ -188,16 +166,15 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
               gap: '6px',
               padding: '6px 12px',
               borderRadius: '8px',
-              background: 'rgba(2, 132, 199, 0.25)',
-              border: '1px solid rgba(2, 132, 199, 0.4)',
-              color: '#38BDF8',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: '#94A3B8',
               fontSize: '12px',
               fontWeight: 600,
               textDecoration: 'none',
             }}
           >
-            <BlueskyIcon size={13} />
-            <span>bsky: @hyperknot.com</span>
+            <span>Mastodon: @leaflet</span>
           </a>
         </div>
 
@@ -205,26 +182,37 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
         <div style={{ fontSize: '13.5px', lineHeight: '22px', color: '#94A3B8' }}>
           <section style={{ marginBottom: '18px' }}>
             <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>
-              What is OpenFreeMap?
+              What is Leaflet?
             </h3>
             <p>
-              OpenFreeMap lets you display custom maps on your website and apps for free.
-              You can either self-host or use the public instance. Everything is open-source, including
-              the full production setup — there’s no ‘open-core’ model here. The map data comes from OpenStreetMap.
+              Leaflet is the leading open-source JavaScript library for mobile-friendly interactive maps.
+              Weighing just about 39 KB of gzipped JS, it has all the mapping features most developers ever need,
+              designed with simplicity, performance and usability in mind.
             </p>
             <p style={{ marginTop: '6px' }}>
-              Using the public instance is completely free: there are no limits on the number of map views or requests.
-              There’s no registration, no user database, no API keys, and no cookies. Weekly full planet downloads are provided
-              in both Btrfs and MBTiles formats.
+              Created by <strong style={{ color: '#F8FAFC' }}>Volodymyr Agafonkin</strong>, Leaflet powers maps
+              across the web — from small blogs to global platforms like OpenStreetMap, GitHub, and Wikimedia.
             </p>
           </section>
 
           <section style={{ marginBottom: '18px' }}>
             <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>
-              Available Styles
+              How PranVayu Couples Leaflet & Three.js Physics
+            </h3>
+            <p>
+              PranVayu runs Leaflet as the cartographic foundation for Delhi NCR. Leaflet’s container projection
+              API (<code style={{ color: 'var(--accent-cyan)' }}>map.latLngToContainerPoint</code>) synchronizes
+              real monitoring station locations with custom GLSL fragment shaders in Three.js in real time on every
+              pan, drag, and zoom event.
+            </p>
+          </section>
+
+          <section style={{ marginBottom: '18px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>
+              Available Tile Layers
             </h3>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
-              {['Positron', 'Bright', 'Liberty', 'Dark', 'Fiord', '3D Peaks'].map((st) => (
+              {['Dark Matter (CartoDB)', 'Positron (CartoDB)', 'OpenStreetMap', 'Voyager (CartoDB)'].map((st) => (
                 <span
                   key={st}
                   style={{
@@ -241,26 +229,6 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
                 </span>
               ))}
             </div>
-          </section>
-
-          <section style={{ marginBottom: '18px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>
-              Who is behind this project?
-            </h3>
-            <p>
-              Created by <strong style={{ color: '#F8FAFC' }}>Zsolt Ero</strong>. After 9 years of running map tile infrastructure for MapHub,
-              he open-sourced it and launched OpenFreeMap so developers no longer face huge bills or complex self-hosting setups.
-            </p>
-          </section>
-
-          <section style={{ marginBottom: '18px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>
-              How is it free and what is the tech stack?
-            </h3>
-            <p>
-              There is no complex tile server running; only nginx serving a Btrfs image with 300 million hard-linked files on dedicated servers.
-              Planetiler makes it possible to generate global tiles in hours instead of weeks. Commercial usage is 100% allowed under MIT.
-            </p>
           </section>
 
           {/* Attribution Box */}
@@ -280,12 +248,12 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <CheckCircleIcon size={16} color="#10B981" />
               <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#F8FAFC' }}>
-                OpenFreeMap © OpenMapTiles · Data from OpenStreetMap
+                Leaflet © 2010–2026 Volodymyr Agafonkin · Maps © OpenStreetMap contributors · CARTO
               </span>
             </div>
 
             <a
-              href="https://github.com/sponsors/hyperknot"
+              href="https://leafletjs.com/download.html"
               target="_blank"
               rel="noreferrer"
               style={{
@@ -295,7 +263,7 @@ export const OpenFreeMapModal: React.FC<OpenFreeMapModalProps> = ({ isOpen, onCl
                 textDecoration: 'none',
               }}
             >
-              Sponsor on GitHub →
+              Leaflet Docs →
             </a>
           </div>
         </div>

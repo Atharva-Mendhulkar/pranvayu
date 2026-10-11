@@ -87,4 +87,13 @@
   - Clean Window card and 48-Hour Forecast Scrubber aligned cleanly without overlap.
 - Verification: `make test` passed 10/10, `make lint` passed with 0 errors, dev server responding with HTTP 200 OK.
 
+### 2026-10-11 19:00 IST — Leaflet Map Engine Migration & Bundle Optimization
+- Migrated mapping engine from MapLibre GL JS to **Leaflet (v1.9.4)** per user instruction.
+- Replaced heavyweight WebGL map library with lightweight Leaflet, reducing map bundle size from **1,036 kB (281 kB gzipped)** down to **149 kB (43 kB gzipped)**, and total CSS to 22.7 kB (8.3 kB gzipped).
+- Supported 4 tile layers: CartoDB Dark Matter (default dark theme), CartoDB Positron, OpenStreetMap standard, and CartoDB Voyager.
+- Real-time sub-pixel synchronization between Leaflet container projection (`map.latLngToContainerPoint`) and Three.js GLSL dispersion shader on `move`, `zoom`, `viewreset`, and `resize` events.
+- Created `web/src/components/LeafletModal.tsx` and updated method attributions with Volodymyr Agafonkin and OpenStreetMap/CARTO credits.
+- All 10 backend tests passing, TypeScript and lint checks green, and Vite production build under 800ms.
+
+
 

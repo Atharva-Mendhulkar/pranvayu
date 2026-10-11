@@ -320,7 +320,7 @@ export const MethodRoute: React.FC<MethodRouteProps> = ({ lang, onBack }) => {
             <br />
             • <strong>OpenAQ & CPCB:</strong> Central Pollution Control Board and DPCC surface monitoring station feeds.
             <br />
-            • <strong>OpenFreeMap & OpenStreetMap:</strong> Vector basemap tiles (<a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a>, <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer">OpenMapTiles</a>, <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>).
+            • <strong>Leaflet, OpenStreetMap & CARTO:</strong> Interactive cartographic basemap engine (<a href="https://leafletjs.com/" target="_blank" rel="noopener noreferrer">Leaflet</a> by Volodymyr Agafonkin, <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>, <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>).
           </p>
 
           <p style={{ marginTop: '12px', color: 'var(--text-muted)', fontSize: '12px' }}>
