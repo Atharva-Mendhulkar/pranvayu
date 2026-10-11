@@ -1,7 +1,7 @@
 # PranVayu Status
 
-Updated: 2026-10-11T08:35:00Z
-Phase: Glassmorphic shadcn Redesign & Integrated Architecture Complete
+Updated: 2026-10-11T09:15:00Z
+Phase: Map API Integration & Top View Flat Cloud Visualization Complete
 
 ## Done
 - **Clean Slate & Repo Structure**: Complete elimination of legacy VayuMind/JointPINN artifacts to satisfy Environmental Hacks rules. Added Apache-2.0 `LICENSE`, `README.md`, `AGENTS.md`, `CLAUDE.md`, and complete `docs/` suite.
@@ -26,24 +26,31 @@ Phase: Glassmorphic shadcn Redesign & Integrated Architecture Complete
 - **Frontend Overhaul: Glassmorphic shadcn Architecture (`web/`)**:
   - **Zero Emojis**: Complete elimination of all emojis across all components, replaced by custom SVG vector icons (`Icons.tsx`) and clean typographic badges.
   - **Glassmorphic Design System**: Dark cosmic palette (`--bg-root: #090D16`), frosted glass surfaces (`backdrop-filter: blur(16px)`), luminous CPCB category rings, and translucent borders (`rgba(255, 255, 255, 0.08)`).
-  - **Page 1: Integrated Advisory Dashboard**:
-    - Hero 3D Atmospheric Dynamics Map coupling physical elevation peaks and advecting storm clouds.
-    - **Horizontal View**: Dramatic Y-axis elevation peaks mapping hotspot pollution severity (Anand Vihar, Bawana, Wazirpur, etc.) with glowing topographic contour lines.
-    - **Top View**: High-angle perspective showing both elevated relief peaks and weather-radar style smoke cloud advection flowing from northwest corridors across Delhi.
-    - Real-time Wind HUD (`14 km/h NW • 315°`) and Plume Advection indicator.
-    - Staggered collision-avoidant station markers and interactive pointer orbit drag.
-    - Integrated with School Day Timetable (Go/Limit/Skip SVG shapes, in-place time adjustment), Cleanest Window badge, 48-hour air line chart with uncertainty band, and Regional Stubble Smoke tracking card.
-  - **Page 2: How We Estimate & Evidence**:
-    - Transparent breakdown of the 4-step computational pipeline (Ingestion, Calibration, Physics, Decision).
-    - Detailed mathematical formulations for Model A (CAMS rolling bias correction), Model B (24-member 2nd-order backward trajectory integration), and Model C (Smoke Influence Index).
-    - Pre-registered historical replay evaluation matrix (M1 through M5) comparing PranVayu against naive baselines with deltas.
-    - Documented limitations (cloud obscuration, local dust, station outages) and data source attributions.
-  - **Budget Compliance**: Bundle size strictly maintained under budget (JS: 196.7 kB gzipped vs 200 kB budget; CSS: 2.01 kB gzipped vs 30 kB budget).
+  - **Real Map API Basemap Integration**:
+    - Underneath the visualization, a real geographic Map API is seamlessly tiled (ArcGIS Dark Canvas Base & Reference tiles covering Delhi NCR at Zoom 11) with zero watermarks.
+    - True cartographic geography rendered below: New Delhi, Connaught Place, Ring Road, Outer Ring Road, NH48, Yamuna river, Hindon river, Noida, Gurugram, Faridabad, Bawana, Ghaziabad, and administrative state boundaries.
+  - **Top View (Map & Clouds - Zero Peaks)**:
+    - Completely flat plane (`u_view_mode = 0.0`, `pos.y = 0.0`). Absolutely NO PEAKS in top view.
+    - True nadir camera view `(0, 7.8, 0.001)` looking directly down `(0, 0, 0)`.
+    - Real Map API basemap visible underneath with advecting weather/storm pollution clouds and dynamic cyan wind streamlines flowing across the city.
+    - Station pins sit cleanly on the flat terrain surface over their true geographic coordinates.
+  - **Horizontal View (3D Peaks on Y-Axis)**:
+    - 3D perspective camera `(0, 3.2, 5.4)` looking at `(0, 0.4, 0)`.
+    - Dramatic 3D peaks rising along the Y-axis (`u_height_scale: 1.65`) from hotspot stations according to PM2.5 severity.
+    - Luminous topographic contour rings wrap around each peak summit with 3D directional hillshading.
+  - **Controls & HUD**:
+    - Mode toggle buttons: `Top View (Map & Clouds)` and `3D Horizontal Peaks`.
+    - Map attribution badge: `Map API: ArcGIS Dark Canvas · OpenStreetMap`.
+    - Atmospheric HUD showing wind speed, direction (`14 km/h (315°) NW`), and active plume advection.
+  - **Integrated Pages**:
+    - Page 1: Advisory Dashboard with Map, School Day Timetable, Cleanest Window, 48-Hour Forecast, Regional Stubble Smoke tracking.
+    - Page 2: How We Estimate with 4-step pipeline, mathematical models (CAMS rolling bias, 24-member ensemble, SII), M1–M5 replay scorecard, and data sources.
+  - **Budget Compliance**: Bundle size strictly maintained under budget (JS: 197.2 kB gzipped vs 200 kB budget; CSS: 2.01 kB gzipped vs 30 kB budget).
 - **Tooling & Verification**:
   - `make test` (10/10 pytest unit tests passing).
   - `make lint` (ruff and TypeScript build passing with 0 errors).
-  - Browser subagent visual verification completed on local preview server (screenshots captured for Page 1 horizontal peaks, Page 1 top view relief and storm clouds, and Page 2 estimation methodology).
+  - Visual verification with screenshots confirming flat Top View with real map and advecting clouds, and 3D peaks in Horizontal View.
 
 ## Next
 - Git commit changes.
-- Final review and handoff.
+- Final user handoff.

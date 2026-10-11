@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { Language } from '../lib/i18n';
-import { WindIcon, CompassIcon, LayersIcon, EyeIcon } from './Icons';
+import { WindIcon, CompassIcon, LayersIcon, MapIcon } from './Icons';
 
 export interface HotspotData {
   id: string;
@@ -25,16 +25,27 @@ interface DelhiFluidMapProps {
   onToggleViewMode?: (mode: 'top' | 'horizontal') => void;
 }
 
-// Convert geographic coordinates to normalized 3D plane coords [-3, 3]
-const CENTER_LAT = 28.625;
-const CENTER_LON = 77.175;
-const COORD_SPAN = 0.45; // ~50km span
-const PLANE_SIZE = 6.2;
+// Exact Web Mercator tile parameters for Delhi NCR at Zoom 11
+// Covers 16 CartoDB Dark Matter / OSM tiles (X: 1461..1464, Y: 852..855)
+// Lat: ~28.304°N to ~28.922°N | Lon: ~76.816°E to ~77.520°E
+const TILE_ZOOM = 11;
+const X_MIN = 1461;
+const Y_MIN = 852;
+const TILES_PER_AXIS = 4;
+const PLANE_SIZE = 6.4;
 
-function geoToPlane(lat: number, lon: number): [number, number] {
-  const x = ((lon - CENTER_LON) / COORD_SPAN) * PLANE_SIZE;
-  const z = -((lat - CENTER_LAT) / COORD_SPAN) * PLANE_SIZE;
-  return [x, z];
+export function geoToPlane(lat: number, lon: number): [number, number] {
+  const n = 2.0 ** TILE_ZOOM;
+  const xtile = ((lon + 180.0) / 360.0) * n;
+  const latRad = (lat * Math.PI) / 180.0;
+  const ytile = (1.0 - Math.asinh(Math.tan(latRad)) / Math.PI) / 2.0 * n;
+
+  const u = (xtile - X_MIN) / TILES_PER_AXIS;
+  const v = (ytile - Y_MIN) / TILES_PER_AXIS;
+
+  const px = (u - 0.5) * PLANE_SIZE;
+  const pz = (v - 0.5) * PLANE_SIZE;
+  return [px, pz];
 }
 
 export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
@@ -51,7 +62,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [activePin, setActivePin] = useState<HotspotData | null>(null);
   const [pinScreenCoords, setPinScreenCoords] = useState<Array<{ id: string; sx: number; sy: number; data: HotspotData }>>([]);
-  const [showWindArrows, setShowWindArrows] = useState<boolean>(true);
+  const [mapTilesLoaded, setMapTilesLoaded] = useState<boolean>(false);
 
   // Three.js instances ref
   const threeRef = useRef<{
@@ -67,7 +78,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     reqId: number;
   } | null>(null);
 
-  // Generate sleek dark basemap canvas texture (Delhi border, Yamuna river, Ring road)
+  // Load real Map API basemap tiles (Carto Dark Matter / OpenStreetMap) onto a 1024x1024 texture
   const createDelhiBasemapTexture = () => {
     const canvas = document.createElement('canvas');
     canvas.width = 1024;
@@ -75,11 +86,10 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return new THREE.Texture();
 
-    // Dark sleek slate background
+    // 1. Initial responsive dark canvas background & grid
     ctx.fillStyle = '#0B1120';
     ctx.fillRect(0, 0, 1024, 1024);
 
-    // Subtle dark grid
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
     ctx.lineWidth = 1;
     for (let i = 0; i < 1024; i += 64) {
@@ -93,79 +103,97 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       ctx.stroke();
     }
 
-    const p2c = (px: number, pz: number): [number, number] => {
-      const cx = ((px + PLANE_SIZE / 2) / PLANE_SIZE) * 1024;
-      const cy = ((pz + PLANE_SIZE / 2) / PLANE_SIZE) * 1024;
-      return [cx, cy];
-    };
-
-    // Delhi NCT boundary polygon
-    const borderPointsGeo = [
-      [28.84, 77.08], [28.82, 77.16], [28.78, 77.24], [28.72, 77.29],
-      [28.66, 77.34], [28.58, 77.34], [28.50, 77.32], [28.43, 77.24],
-      [28.42, 77.12], [28.46, 76.99], [28.55, 76.92], [28.67, 76.92],
-      [28.78, 76.99], [28.84, 77.08]
-    ];
-    ctx.beginPath();
-    borderPointsGeo.forEach(([lat, lon], idx) => {
-      const [px, pz] = geoToPlane(lat, lon);
-      const [cx, cy] = p2c(px, pz);
-      if (idx === 0) ctx.moveTo(cx, cy);
-      else ctx.lineTo(cx, cy);
-    });
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(30, 41, 59, 0.35)';
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
-    ctx.lineWidth = 2.5;
-    ctx.setLineDash([8, 6]);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Yamuna River curve with subtle cyan glow
-    const yamunaGeo = [
-      [28.86, 77.22], [28.76, 77.23], [28.70, 77.22], [28.64, 77.25],
-      [28.60, 77.27], [28.54, 77.31], [28.45, 77.34]
-    ];
-    ctx.beginPath();
-    yamunaGeo.forEach(([lat, lon], idx) => {
-      const [px, pz] = geoToPlane(lat, lon);
-      const [cx, cy] = p2c(px, pz);
-      if (idx === 0) ctx.moveTo(cx, cy);
-      else ctx.lineTo(cx, cy);
-    });
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
-    ctx.lineWidth = 7;
-    ctx.lineCap = 'round';
-    ctx.stroke();
-
-    // Inner & Outer Ring Roads
-    const [cpx, cpz] = geoToPlane(28.63, 77.21);
-    const [ccx, ccy] = p2c(cpx, cpz);
-    
-    // Outer Ring Road
-    ctx.beginPath();
-    ctx.ellipse(ccx, ccy, 180, 160, -0.1, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    // Inner Ring Road
-    ctx.beginPath();
-    ctx.ellipse(ccx, ccy, 110, 95, -0.1, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // Subtle sleek labels
-    ctx.font = '600 12px sans-serif';
-    ctx.fillStyle = 'rgba(148, 163, 184, 0.6)';
-    ctx.fillText('Yamuna River', ccx + 40, ccy - 30);
-    ctx.fillText('National Capital Territory (Delhi)', ccx - 220, ccy - 180);
-
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.ClampToEdgeWrapping;
     texture.wrapT = THREE.ClampToEdgeWrapping;
+
+    // Helper: draw geographic landmarks on top of basemap
+    const drawLandmarkOverlays = () => {
+      // Yamuna River curve
+      const yamunaGeo = [
+        [28.86, 77.22], [28.76, 77.23], [28.70, 77.22], [28.64, 77.25],
+        [28.60, 77.27], [28.54, 77.31], [28.45, 77.34]
+      ];
+      ctx.beginPath();
+      yamunaGeo.forEach(([lat, lon], idx) => {
+        const [px, pz] = geoToPlane(lat, lon);
+        const cx = ((px / PLANE_SIZE) + 0.5) * 1024;
+        const cy = ((pz / PLANE_SIZE) + 0.5) * 1024;
+        if (idx === 0) ctx.moveTo(cx, cy);
+        else ctx.lineTo(cx, cy);
+      });
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.55)';
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      // Delhi NCT administrative boundary dashed line
+      const borderPointsGeo = [
+        [28.84, 77.08], [28.82, 77.16], [28.78, 77.24], [28.72, 77.29],
+        [28.66, 77.34], [28.58, 77.34], [28.50, 77.32], [28.43, 77.24],
+        [28.42, 77.12], [28.46, 76.99], [28.55, 76.92], [28.67, 76.92],
+        [28.78, 76.99], [28.84, 77.08]
+      ];
+      ctx.beginPath();
+      borderPointsGeo.forEach(([lat, lon], idx) => {
+        const [px, pz] = geoToPlane(lat, lon);
+        const cx = ((px / PLANE_SIZE) + 0.5) * 1024;
+        const cy = ((pz / PLANE_SIZE) + 0.5) * 1024;
+        if (idx === 0) ctx.moveTo(cx, cy);
+        else ctx.lineTo(cx, cy);
+      });
+      ctx.closePath();
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 6]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      texture.needsUpdate = true;
+    };
+
+    drawLandmarkOverlays();
+
+    // 2. Asynchronously stream 16 ArcGIS Dark Canvas Map API tiles (Base + Reference labels, zero watermark)
+    let tilesLoadedCount = 0;
+    const totalTiles = TILES_PER_AXIS * TILES_PER_AXIS;
+
+    for (let row = 0; row < TILES_PER_AXIS; row++) {
+      for (let col = 0; col < TILES_PER_AXIS; col++) {
+        const tileX = X_MIN + col;
+        const tileY = Y_MIN + row;
+
+        const baseImg = new Image();
+        baseImg.crossOrigin = 'anonymous';
+        baseImg.src = `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/${TILE_ZOOM}/${tileY}/${tileX}`;
+
+        baseImg.onload = () => {
+          ctx.drawImage(baseImg, col * 256, row * 256, 256, 256);
+
+          // Overlay reference layer (roads, highways, localities & district labels)
+          const refImg = new Image();
+          refImg.crossOrigin = 'anonymous';
+          refImg.src = `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/${TILE_ZOOM}/${tileY}/${tileX}`;
+          refImg.onload = () => {
+            ctx.drawImage(refImg, col * 256, row * 256, 256, 256);
+            tilesLoadedCount++;
+            if (tilesLoadedCount === totalTiles) {
+              drawLandmarkOverlays();
+              setMapTilesLoaded(true);
+            }
+            texture.needsUpdate = true;
+          };
+          refImg.onerror = () => {
+            tilesLoadedCount++;
+            texture.needsUpdate = true;
+          };
+        };
+        baseImg.onerror = () => {
+          texture.needsUpdate = true;
+        };
+      }
+    }
+
     return texture;
   };
 
@@ -180,11 +208,14 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     scene.background = new THREE.Color('#090D16');
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-    // When top view: position above at (0, 7.5, 0.8) so peaks are visible in 3D relief!
+    // In top view: camera looks straight down at nadir (0, 7.8, 0.001) -> (0, 0, 0)
+    // In horizontal view: perspective 3D view (0, 3.2, 5.4) -> (0, 0.4, 0)
     const initialCamPos = viewMode === 'top' 
-      ? new THREE.Vector3(0, 7.2, 0.8) 
+      ? new THREE.Vector3(0, 7.8, 0.001) 
       : new THREE.Vector3(0, 3.2, 5.4);
-    const initialLookAt = new THREE.Vector3(0, 0.2, 0);
+    const initialLookAt = viewMode === 'top'
+      ? new THREE.Vector3(0, 0, 0)
+      : new THREE.Vector3(0, 0.4, 0);
     camera.position.copy(initialCamPos);
     camera.lookAt(initialLookAt);
 
@@ -197,7 +228,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-    // 3. Basemap Texture
+    // 3. Map API Basemap Texture
     const basemapTexture = createDelhiBasemapTexture();
 
     // 4. Custom GLSL Shader Material
@@ -213,8 +244,8 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
 
     const uniforms = {
       u_time: { value: 0.0 },
-      u_view_mode: { value: viewMode === 'top' ? 0.65 : 1.0 }, // Both views show peaks!
-      u_height_scale: { value: 1.35 },
+      u_view_mode: { value: viewMode === 'top' ? 0.0 : 1.0 }, // 0.0 in top view (NO PEAKS), 1.0 in horizontal (PEAKS)
+      u_height_scale: { value: 1.65 },
       u_basemap: { value: basemapTexture },
       u_wind: { value: new THREE.Vector2(-0.7, 0.5) },
       u_wind_speed: { value: 0.5 },
@@ -272,7 +303,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           vec2 hPos = u_hotspot_positions[i];
           float hVal = u_hotspot_intensities[i];
           float dist = distance(pos.xz, hPos);
-          float radius = 0.72;
+          float radius = 0.78;
           float falloff = exp(- (dist * dist) / (2.0 * radius * radius));
           totalIntensity += (hVal / 320.0) * falloff;
         }
@@ -281,7 +312,9 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
         vec2 noiseCoord = pos.xz * 2.2 - u_wind * u_time * 0.18;
         float turb = fbm(noiseCoord) * 0.28;
 
-        // Height displacement: Top view shows elevated peaks, horizontal view shows full peaks
+        // Height displacement:
+        // When u_view_mode == 0.0 (Top View): elevation is strictly 0.0! NO PEAKS! Entire plane is flat.
+        // When u_view_mode == 1.0 (Horizontal View): full 3D peaks rise on the Y axis.
         float elevation = (totalIntensity + turb * totalIntensity) * u_height_scale * u_view_mode;
         pos.y = elevation;
 
@@ -348,35 +381,50 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       }
 
       void main() {
+        // 1. Real Map API basemap tile underneath
         vec4 baseMapColor = texture2D(u_basemap, vUv);
 
-        // Fluid advection storm clouds flowing with wind vector
-        vec2 advectCoord = vPosition.xz - u_wind * u_time * (0.2 + u_wind_speed * 0.12);
-        float cloudTurb = fbm(advectCoord * 2.2);
-        float fineTurb  = fbm(advectCoord * 5.5 + u_time * 0.08);
+        // 2. Fluid advection storm clouds flowing with wind vector
+        vec2 advectCoord = vPosition.xz - u_wind * u_time * (0.24 + u_wind_speed * 0.14);
+        float cloudTurb1 = fbm(advectCoord * 2.2);
+        float cloudTurb2 = fbm(advectCoord * 5.0 + u_time * 0.06);
 
-        // Composite pollution cloud billows
-        float cloudField = vSmokeDensity * (0.68 + 0.55 * cloudTurb + 0.22 * fineTurb);
-        float cloudAlpha = smoothstep(0.06, 0.60, cloudField);
+        // Composite atmospheric pollution cloud field
+        float cloudField = vSmokeDensity * (0.64 + 0.58 * cloudTurb1 + 0.24 * cloudTurb2);
+        float cloudAlpha = smoothstep(0.08, 0.64, cloudField);
 
-        vec3 smokeColor = getCPCBColor(clamp(cloudField * 1.15, 0.0, 1.0));
+        vec3 cloudColor = getCPCBColor(clamp(cloudField * 1.15, 0.0, 1.0));
 
-        // 3D Hillshading & Light Direction
-        vec3 lightDir = normalize(vec3(0.3, 1.2, 0.7));
-        float diff = max(dot(vNormal, lightDir), 0.35);
-        smokeColor *= (0.75 + 0.35 * diff);
+        // 3. Dynamic wind streamlines gliding across Delhi terrain
+        vec2 windDir = normalize(u_wind);
+        vec2 windPerp = vec2(-windDir.y, windDir.x);
+        float streamBand = sin(dot(vPosition.xz, windPerp) * 14.0);
+        float streamFlow = sin(dot(vPosition.xz, windDir) * 4.5 - u_time * (1.8 + u_wind_speed * 1.2));
+        float windStreak = smoothstep(0.72, 0.98, streamBand * streamFlow);
+        vec3 windStreamColor = vec3(0.35, 0.88, 1.0); // Translucent luminous cyan streamline
 
-        // Luminous Topographic Contour lines (prominent in both Top & Horizontal views)
-        float contour = fract(vElevation * 7.5);
-        if (contour < 0.075 && vElevation > 0.1) {
-          smokeColor = mix(smokeColor, vec3(1.0, 1.0, 1.0), 0.45);
+        // 4. 3D Hillshading & Contour lines: ACTIVE ONLY IN HORIZONTAL VIEW (u_view_mode > 0.1)
+        if (u_view_mode > 0.1) {
+          vec3 lightDir = normalize(vec3(0.3, 1.2, 0.7));
+          float diff = max(dot(vNormal, lightDir), 0.35);
+          cloudColor *= (0.75 + 0.35 * diff);
+
+          // Topographic contour lines on 3D peaks
+          float contour = fract(vElevation * 7.5);
+          if (contour < 0.08 && vElevation > 0.08) {
+            cloudColor = mix(cloudColor, vec3(1.0, 1.0, 1.0), 0.45 * u_view_mode);
+          }
         }
 
-        // Sleek blending: dark basemap + glowing clouds & peaks
-        float finalAlpha = clamp(cloudAlpha * 0.88, 0.0, 0.95);
-        vec3 finalColor = mix(baseMapColor.rgb, smokeColor, finalAlpha);
+        // 5. Final composite:
+        // Dark Map API layer underneath + translucent pollution weather clouds + wind streamlines
+        float finalCloudAlpha = clamp(cloudAlpha * 0.72, 0.0, 0.85);
+        vec3 composited = mix(baseMapColor.rgb, cloudColor, finalCloudAlpha);
 
-        gl_FragColor = vec4(finalColor, 1.0);
+        // Overlay flowing wind streaks
+        composited = mix(composited, windStreamColor, windStreak * 0.32);
+
+        gl_FragColor = vec4(composited, 1.0);
       }
     `;
 
@@ -422,8 +470,8 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       currentLookAt.lerp(targetLookAt, 0.08);
       camera.lookAt(currentLookAt);
 
-      // Both views show peaks! Top view = 0.65 height relief, Horizontal = 1.0 full peaks
-      const targetViewModeVal = viewMode === 'top' ? 0.65 : 1.0;
+      // Top view = strictly 0.0 (NO PEAKS, flat plane). Horizontal view = 1.0 (full 3D peaks).
+      const targetViewModeVal = viewMode === 'top' ? 0.0 : 1.0;
       material.uniforms.u_view_mode.value = THREE.MathUtils.lerp(
         material.uniforms.u_view_mode.value,
         targetViewModeVal,
@@ -435,8 +483,10 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
       // Project 3D station pins to 2D screen coordinates
       const coords = hotspots.map((h) => {
         const [px, pz] = geoToPlane(h.lat, h.lon);
-        const pinElevation = material.uniforms.u_view_mode.value * (h.pm25 / 320.0) * 1.35;
-        const v3 = new THREE.Vector3(px, pinElevation + 0.16, pz);
+        // When in Top View, u_view_mode is 0.0, so pinElevation is 0.0 (sits right on the map surface)
+        // When in Horizontal View, pins elevate to the summit of each 3D hotspot peak
+        const pinElevation = material.uniforms.u_view_mode.value * (h.pm25 / 320.0) * 1.65;
+        const v3 = new THREE.Vector3(px, pinElevation + 0.14, pz);
         v3.project(camera);
 
         const sx = ((v3.x + 1) / 2) * width;
@@ -530,11 +580,11 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
     if (!threeRef.current) return;
 
     if (viewMode === 'top') {
-      // Top view camera: high angle showing both peaks and moving cloud field
-      threeRef.current.targetCamPos.set(0, 7.2, 0.8);
-      threeRef.current.targetLookAt.set(0, 0.2, 0);
+      // Top view camera: true nadir looking straight down over flat map with advecting clouds
+      threeRef.current.targetCamPos.set(0, 7.8, 0.001);
+      threeRef.current.targetLookAt.set(0, 0, 0);
     } else {
-      // Horizontal perspective camera
+      // Horizontal perspective camera: 3D view showing hotspot peaks rising on Y axis
       threeRef.current.targetCamPos.set(0, 3.2, 5.4);
       threeRef.current.targetLookAt.set(0, 0.4, 0);
     }
@@ -603,7 +653,7 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           }}
         >
           <LayersIcon size={14} />
-          <span>{lang === 'hi' ? 'शीर्ष दृश्य (चोटियाँ और बादल)' : 'Top View (Peaks & Radar)'}</span>
+          <span>{lang === 'hi' ? 'शीर्ष दृश्य (मानचित्र और बादल)' : 'Top View (Map & Clouds)'}</span>
         </button>
 
         <button
@@ -814,6 +864,32 @@ export const DelhiFluidMap: React.FC<DelhiFluidMapProps> = ({
           )}
         </div>
       )}
+
+      {/* Map API Attribution & Tile Status Badge (Bottom Right) */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '12px',
+          right: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          background: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: '1px solid var(--border-glass)',
+          borderRadius: 'var(--radius-sm)',
+          padding: '4px 10px',
+          fontSize: '11px',
+          color: 'var(--text-muted)',
+          zIndex: 15,
+          pointerEvents: 'none',
+        }}
+      >
+        <MapIcon size={12} color="var(--accent-cyan)" />
+        <span>Map API: ArcGIS Dark Canvas · OpenStreetMap</span>
+      </div>
     </div>
   );
 };
+

@@ -48,7 +48,7 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
   const [dayVerdicts, setDayVerdicts] = useState(currentDay.verdicts);
 
   // Map state
-  const [mapViewMode, setMapViewMode] = useState<'top' | 'horizontal'>('horizontal');
+  const [mapViewMode, setMapViewMode] = useState<'top' | 'horizontal'>('top');
   const [hourOffset, setHourOffset] = useState<number>(8); // Morning PE hour (08:00)
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [windSpeedKmh] = useState<number>(14);
@@ -120,8 +120,8 @@ export const HomeRoute: React.FC<HomeRouteProps> = ({
             </h2>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
               {lang === 'hi'
-                ? 'हॉटस्पॉट चोटियाँ और हवा के साथ बहते धुएँ के बादलों का 3D अनुकरण'
-                : '3D elevation peaks showing hotspot intensity with real-time pollution cloud advection'}
+                ? 'शीर्ष दृश्य में वास्तविक मानचित्र पर प्रदूषण बादल व हवा, क्षैतिज दृश्य में 3D चोटियाँ'
+                : 'Top View shows real map API with wind and pollution storm clouds (no peaks); Horizontal View shows 3D peaks'}
             </p>
           </div>
 
